@@ -237,3 +237,71 @@ bindAction('btn-dash', 'isDashing');
 bindAction('btn-skill', 'isUsingSkill');
 bindAction('btn-heal', 'isHealing');
 bindAction('btn-interact', 'isInteracting');
+function drawPlayerOrb(p, id) {
+    const isLocal = id === playerId;
+    const offsetX = canvas.width/2 - localPlayer.x;
+    const offsetY = canvas.height/2 - localPlayer.y;
+    const px = p.x + offsetX;
+    const py = p.y + offsetY;
+
+    const pulse = Math.sin(frameCount * 0.15) * 5;
+
+    // --- 1. AURA (Normal) ---
+    const auraColor = isLocal ? "0, 242, 255" : "255, 0, 85";
+    ctx.beginPath();
+    ctx.arc(px, py, 25 + pulse, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${auraColor}, 0.2)`;
+    ctx.fill();
+
+    // --- 2. CORE ---
+    ctx.save();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = isLocal ? "#00f2ff" : "#ff0055";
+    ctx.beginPath();
+    ctx.arc(px, py, 15, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.restore();
+
+    // --- 3. ANIMATION ISAKY NY BOKOTRA ---
+
+    // Attack (Faribolana fotsy matevina)
+    if (p.isAttacking) {
+        ctx.beginPath();
+        ctx.arc(px, py, 45, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 6; // Natao matevina
+        ctx.stroke();
+    }
+
+    // Skill (Aura Mena/Afo mipoaka)
+    if (p.isUsingSkill) {
+        ctx.beginPath();
+        ctx.arc(px, py, 50 + (pulse * 2), 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffaa00";
+        ctx.lineWidth = 10;
+        ctx.setLineDash([5, 10]); // Miendrika teboka teboka
+        ctx.stroke();
+        ctx.setLineDash([]); // Averina ho tsipika tsotra
+    }
+
+    // Dash (Misy "trace" na aloka kely)
+    if (p.isDashing) {
+        ctx.beginPath();
+        ctx.arc(px - 10, py - 10, 15, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fill();
+    }
+
+    // Heal (Sary mitsatoka maitso)
+    if (p.isHealing) {
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "20px Arial";
+        ctx.fillText("✚", px - 10, py - 20);
+    }
+
+    // Name Tag
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name || "Hunter", px, py - 40);
+}
