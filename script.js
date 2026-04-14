@@ -197,3 +197,30 @@ function gameLoop() {
 
     requestAnimationFrame(gameLoop);
 }
+// Ataovy azo antoka fa hita ilay bokotra vao asiana event
+const atkBtn = document.getElementById('btn-attack');
+
+if (atkBtn) {
+    // Ho an'ny Mobile
+    atkBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        localPlayer.isAttacking = true;
+        update(playerRef, { isAttacking: true });
+    });
+
+    atkBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        localPlayer.isAttacking = false;
+        update(playerRef, { isAttacking: false });
+    });
+
+    // Ho an'ny PC (sedra fotsiny)
+    atkBtn.onmousedown = () => {
+        localPlayer.isAttacking = true;
+        update(playerRef, { isAttacking: true });
+    };
+    atkBtn.onmouseup = () => {
+        localPlayer.isAttacking = false;
+        update(playerRef, { isAttacking: false });
+    };
+}
