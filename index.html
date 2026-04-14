@@ -1,202 +1,30 @@
-<!DOCTYPE html>
-<html lang="mg">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Solo Leveling BR PRO</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
-<style>
-body, html {
-    margin:0; padding:0; overflow:hidden; background:#000; color:white;
-}
-
-/* MAP LEHIBE */
-#game-container {
-    position:absolute;
-    width:3000px;
-    height:3000px;
-    background-color:#0d0d0d;
-    background-image:
-        linear-gradient(rgba(0,255,255,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,255,0.05) 1px, transparent 1px);
-    background-size:50px 50px;
-}
-
-/* PLAYER */
-.player {
-    position:absolute;
-    width:50px;
-    height:50px;
-    background:#00f2ff;
-    box-shadow:0 0 15px #00f2ff;
-    border-radius:6px;
-    font-size:10px;
-    text-align:center;
-}
-
-/* BUTTON */
-.controls {
-    position:fixed;
-    bottom:20px;
-    left:50%;
-    transform:translateX(-50%);
-}
-
-button {
-    padding:10px;
-    margin:5px;
-}
-</style>
-</head>
-
-<body>
-
-<div id="game-container"></div>
-
-<div class="controls">
-    <button onclick="move('up')">↑</button>
-    <button onclick="move('down')">↓</button>
-    <button onclick="move('left')">←</button>
-    <button onclick="move('right')">→</button>
-    <button onclick="attack()">⚔️ Attack</button>
-</div>
-
-<div style="position:fixed; top:10px; left:10px">
-    <div id="info"></div>
-</div>
-
-<script>
-
-// 🔥 FIREBASE CONFIG (ILAY ANAO)
+// CONFIG-nao
 const firebaseConfig = {
   apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
   authDomain: "nolimite-29e0b.firebaseapp.com",
   databaseURL: "https://nolimite-29e0b-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "nolimite-29e0b",
+  storageBucket: "nolimite-29e0b.firebasestorage.app",
+  messagingSenderId: "779663542451",
+  appId: "1:779663542451:web:e87cd9eba6d8e1bcfd88c6",
+  measurementId: "G-VZTK4QBN2J"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// init
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-let myId;
-let players = {};
-let myData = {
-    x: Math.random()*2000,
-    y: Math.random()*2000,
-    name: "Hunter",
-    hp: 100,
-    kills: 0
-};
-
-// CREATE PLAYER
-const ref = db.ref("players").push();
-myId = ref.key;
-ref.set(myData);
-ref.onDisconnect().remove();
-
-// LISTEN PLAYERS
-db.ref("players").on("value", snap => {
-    players = snap.val() || {};
-    drawPlayers();
+// test: mandefa data
+set(ref(db, 'test'), {
+  message: "Mandeha tsara 🔥"
 });
 
-// MOVE
-function move(dir){
-    const step = 30;
-    if(dir==="up") myData.y -= step;
-    if(dir==="down") myData.y += step;
-    if(dir==="left") myData.x -= step;
-    if(dir==="right") myData.x += step;
-
-    db.ref("players/"+myId).update({
-        x: myData.x,
-        y: myData.y
-    });
-
-    updateCamera();
-}
-
-// ATTACK
-function attack(){
-    const range = 100;
-
-    for(let id in players){
-        if(id===myId) continue;
-
-        let e = players[id];
-        let dx = myData.x - e.x;
-        let dy = myData.y - e.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-
-        if(dist < range){
-            let hp = (e.hp||100) - 20;
-
-            if(hp <= 0){
-                db.ref("players/"+id).remove();
-
-                myData.kills++;
-                db.ref("players/"+myId).update({
-                    kills: myData.kills
-                });
-
-            } else {
-                db.ref("players/"+id).update({
-                    hp: hp
-                });
-            }
-        }
-    }
-}
-
-// DRAW
-function drawPlayers(){
-    const container = document.getElementById("game-container");
-    container.innerHTML = "";
-
-    for(let id in players){
-        let p = players[id];
-
-        let el = document.createElement("div");
-        el.className = "player";
-
-        el.style.left = p.x+"px";
-        el.style.top = p.y+"px";
-
-        el.innerHTML = `
-            ${p.name}<br>
-            ❤️ ${p.hp||100}<br>
-            💀 ${p.kills||0}
-        `;
-
-        container.appendChild(el);
-    }
-
-    document.getElementById("info").innerText =
-        "HP: "+myData.hp+" | Kills: "+myData.kills;
-
-    updateCamera();
-}
-
-// CAMERA
-function updateCamera(){
-    const container = document.getElementById("game-container");
-    container.style.transform =
-        `translate(${-myData.x + window.innerWidth/2}px,
-                   ${-myData.y + window.innerHeight/2}px)`;
-}
-
-// KEYBOARD
-window.addEventListener("keydown", e=>{
-    if(e.key==="ArrowUp") move("up");
-    if(e.key==="ArrowDown") move("down");
-    if(e.key==="ArrowLeft") move("left");
-    if(e.key==="ArrowRight") move("right");
+// mamaky data
+onValue(ref(db, 'test'), (snapshot) => {
+  console.log(snapshot.val());
 });
-
 </script>
-
-</body>
-</html>
