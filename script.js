@@ -24,7 +24,26 @@ const firebaseConfig = {
     databaseURL: "https://nolimite-29e0b-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "nolimite-29e0b",
 };
+import { sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+document.getElementById("signup-btn").onclick = async () => {
+    let email = emailInput.value;
+    let pass = passwordInput.value;
+    let name = nameInput.value;
+
+    try {
+        let userCred = await createUserWithEmailAndPassword(auth,email,pass);
+
+        await updateProfile(userCred.user,{displayName:name});
+
+        await sendEmailVerification(userCred.user);
+
+        alert("Verification email nalefa! Jereo mail-nao");
+
+    } catch(e) {
+        alert(e.message);
+    }
+};
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
