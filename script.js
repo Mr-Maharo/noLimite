@@ -179,3 +179,30 @@ document.getElementById('btn-attack').onclick = () => {
     // Basic hit detection logic would go here
     console.log("Attack!");
 };
+document.getElementById('login-btn').onclick = async () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('password').value;
+
+    if (!email.includes("@")) {
+        alert("Email tsy valide!");
+        return;
+    }
+
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        alert("Login OK 🔥");
+    } catch (err) {
+        alert(err.message);
+    }
+};
+document.getElementById('signup-btn').onclick = async () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('password').value;
+
+    try {
+        await createUserWithEmailAndPassword(auth, email, pass);
+        alert("Compte créé 🔥");
+    } catch (err) {
+        alert(err.message);
+    }
+};
