@@ -1,4 +1,15 @@
-<script type="module">
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multiplayer Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+<script type="module" src="script.js"></script>
+  <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
@@ -17,14 +28,9 @@ const firebaseConfig = {
 // init
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// test: mandefa data
-set(ref(db, 'test'), {
-  message: "Mandeha tsara 🔥"
-});
-
-// mamaky data
-onValue(ref(db, 'test'), (snapshot) => {
-  console.log(snapshot.val());
-});
 </script>
+
+
+  
+</body>
+</html>
