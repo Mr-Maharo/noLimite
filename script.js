@@ -239,3 +239,59 @@ setupMobileBtn('btn-up', 'w');
 setupMobileBtn('btn-down', 's');
 setupMobileBtn('btn-left', 'a');
 setupMobileBtn('btn-right', 'd');
+
+let frameCount = 0; // Ampio any ambony ity
+
+function drawPlayerOrb(p, id) {
+    const isLocal = id === playerId;
+    const offsetX = canvas.width/2 - localPlayer.x;
+    const offsetY = canvas.height/2 - localPlayer.y;
+    const px = p.x + offsetX;
+    const py = p.y + offsetY;
+
+    frameCount++;
+
+    // 1. AURA ANIMATION
+    const pulse = Math.sin(frameCount * 0.1) * 5;
+    const auraColor = isLocal ? "rgba(0, 242, 255," : "rgba(255, 0, 85,";
+    
+    // Sosona aura maromaro
+    for(let i = 3; i > 0; i--) {
+        ctx.beginPath();
+        ctx.arc(px, py, 20 + (i * 5) + pulse, 0, Math.PI * 2);
+        ctx.fillStyle = `${auraColor} ${0.1 / i})`;
+        ctx.fill();
+    }
+
+    // 2. NY CORE (Ilay boribory eo afovoany)
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = isLocal ? "#00f2ff" : "#ff0055";
+    
+    // Effect "Glow"
+    const grad = ctx.createRadialGradient(px, py, 5, px, py, 20);
+    grad.addColorStop(0, "white");
+    grad.addColorStop(1, isLocal ? "#00f2ff" : "#ff0055");
+
+    ctx.beginPath();
+    ctx.arc(px, py, 15, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    
+    // 3. EFFECT ATTACK (Raha manindry attack)
+    if (p.isAttacking) {
+        ctx.beginPath();
+        ctx.arc(px, py, 40 + pulse * 2, 0, Math.PI * 2);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    // Reset shadow
+    ctx.shadowBlur = 0;
+
+    // Name Tag
+    ctx.fillStyle = "white";
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(p.name || "Hunter", px, py - 35);
+}
