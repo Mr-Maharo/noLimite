@@ -1,120 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solo Leveling: BR</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA RISE</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <div id="ui-layer">
-        <div id="auth-screen" class="modal">
-            <h1>AURA RISE</h1>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button id="login-btn">Login</button>
-            <button id="signup-btn">Sign Up</button>
-        </div>
 
-        <div id="lobby-screen" class="modal" style="display:none;">
-            <h2>Lobby</h2>
-            <div id="stats-display"></div>
-            <button id="join-btn">Quick Join Game</button>
-        </div>
-
-        <div id="game-ui" style="display:none;">
-            <div class="hud">
-                <div id="player-name">Player</div>
-                <div class="hp-container"><div id="hp-bar"></div></div>
-                <div id="zone-timer">Zone Shrinking...</div>
-            </div>
-            <div id="mobile-controls" style="position: fixed; bottom: 20px; left: 20px; display: grid; grid-template-columns: repeat(3, 50px); gap: 10px;">
-    <div></div>
-    <button id="btn-up" class="ctrl-btn">↑</button>
-    <div></div>
-    <button id="btn-left" class="ctrl-btn">←</button>
-    <button id="btn-down" class="ctrl-btn">↓</button>
-    <button id="btn-right" class="ctrl-btn">→</button>
+<div id="auth-screen" class="modal">
+    <h1>AURA RISE</h1>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="login-btn">Login</button>
+    <button id="signup-btn">Sign Up</button>
 </div>
 
-<style>
-  .ctrl-btn {
-    width: 50px;
-    height: 50px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid white;
-    color: white;
-    border-radius: 50%;
-    font-size: 20px;
-    touch-action: none; /* Tsy mampikorontana ny scroll */
-  }
-</style>
-            <div class="controls">
-                <button class="btn" id="btn-move">🕹️</button>
-                <button class="btn" id="btn-attack">⚔️</button>
-                <button class="btn" id="btn-dash">💨</button>
-                <button class="btn" id="btn-skill">🔥</button>
-                <button class="btn" id="btn-heal">💊</button>
-                <button class="btn" id="btn-interact">🖐️</button>
-            </div>
-        </div>
-    </div>
-    <div id="game-ui" style="display:none;">
-    <div id="hp-container"><div id="hp-bar"></div></div>
+<div id="lobby-screen" class="modal" style="display:none;">
+    <h2>Lobby</h2>
+    <button id="join-btn">Play</button>
+</div>
 
-    <div class="mobile-controls">
-        <div class="d-pad">
-            <button id="btn-up" class="ctrl-btn">↑</button>
-            <div class="side-btns">
-                <button id="btn-left" class="ctrl-btn">←</button>
-                <button id="btn-right" class="ctrl-btn">→</button>
-            </div>
-            <button id="btn-down" class="ctrl-btn">↓</button>
-        </div>
-        
-        <button id="btn-attack" class="attack-btn">ATTACK</button>
+<div id="game-ui" style="display:none;">
+    <div class="hud">
+        <div class="hp-container"><div id="hp-bar"></div></div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-up">↑</button>
+        <button id="btn-down">↓</button>
+        <button id="btn-left">←</button>
+        <button id="btn-right">→</button>
+        <button id="btn-attack">⚔️</button>
     </div>
 </div>
 
-<style>
-  .mobile-controls {
-    position: fixed;
-    bottom: 30px;
-    width: 100%;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    pointer-events: none;
-  }
-  .d-pad, .attack-btn { pointer-events: auto; }
-  
-  .ctrl-btn {
-    width: 60px; height: 60px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid #00f2ff;
-    color: white;
-    border-radius: 15px;
-    font-size: 24px;
-    backdrop-filter: blur(5px);
-  }
+<canvas id="gameCanvas"></canvas>
 
-  .side-btns { display: flex; gap: 60px; }
-
-  .attack-btn {
-    width: 100px; height: 100px;
-    background: radial-gradient(circle, #ff0055, #880022);
-    border: 4px solid white;
-    border-radius: 50%;
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 0 20px #ff0055;
-    transition: transform 0.1s;
-  }
-  .attack-btn:active { transform: scale(0.9); }
-</style>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <script type="module" src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
