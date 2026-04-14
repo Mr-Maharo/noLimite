@@ -206,3 +206,36 @@ document.getElementById('signup-btn').onclick = async () => {
         alert(err.message);
     }
 };
+// --- MOBILE CONTROLS LOGIC ---
+const mobileKeys = {
+    'w': false,
+    's': false,
+    'a': false,
+    'd': false
+};
+
+function setupMobileBtn(id, key) {
+    const btn = document.getElementById(id);
+    
+    // Rehefa tendrena (Start)
+    btn.ontouchstart = (e) => {
+        e.preventDefault();
+        keys[key] = true;
+    };
+    
+    // Rehefa esorina ny rantsan-tanana (End)
+    btn.ontouchend = (e) => {
+        e.preventDefault();
+        keys[key] = false;
+    };
+
+    // Ho an'ny Mouse koa raha tiana ho sedraina amin'ny PC
+    btn.onmousedown = () => keys[key] = true;
+    btn.onmouseup = () => keys[key] = false;
+}
+
+// Ampifandraisina ny bokotra sy ny hetsika
+setupMobileBtn('btn-up', 'w');
+setupMobileBtn('btn-down', 's');
+setupMobileBtn('btn-left', 'a');
+setupMobileBtn('btn-right', 'd');
