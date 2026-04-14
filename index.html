@@ -6,99 +6,188 @@
 <title>AURA RISE</title>
 
 <style>
-body,html{
-margin:0;
-padding:0;
-background:#0a0a0f;
-color:white;
-font-family:sans-serif;
-overflow:hidden;
+:root {
+    --primary: #00f2ff; /* Cyan neon */
+    --secondary: #7000ff; /* Volomparasy neon */
+    --bg-dark: #050508;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
-/* LOGO */
-#logo{
-position:fixed;
-top:10px;
-left:50%;
-transform:translateX(-50%);
-font-size:26px;
-color:#00f2ff;
+body, html {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-dark);
+    color: white;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    height: 100%;
 }
 
-/* AUTH */
-.modal{
-position:fixed;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-background:#111;
-padding:20px;
-text-align:center;
+/* LOGO - MAHARO STUDIO */
+#logo {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.5));
+    z-index: 100;
 }
 
-/* HUD */
-#stats{
-position:fixed;
-top:10px;
-left:10px;
-font-size:14px;
+/* MODALS (Login & Lobby) */
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(15, 15, 25, 0.9);
+    padding: 40px;
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    text-align: center;
+    backdrop-filter: blur(10px);
+    width: 320px;
 }
 
-/* FRIENDS */
-#friends{
-position:fixed;
-top:80px;
-left:10px;
-background:#111;
-padding:10px;
-width:150px;
+.modal h1 {
+    margin-bottom: 30px;
+    letter-spacing: 2px;
 }
 
-/* PROFILE */
-#profile{
-position:fixed;
-top:80px;
-right:10px;
-background:#111;
-padding:10px;
-width:150px;
+/* INPUTS */
+input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 5px;
+    color: white;
+    box-sizing: border-box;
+    transition: 0.3s;
 }
 
-/* CHAT */
-#chat-box{
-position:fixed;
-bottom:10px;
-left:50%;
-transform:translateX(-50%);
-width:300px;
-background:#111;
+input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(255,255,255,0.1);
 }
 
-#chat-messages{
-height:120px;
-overflow-y:auto;
-font-size:12px;
+/* BUTTONS */
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    padding: 12px 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: 0.3s;
+    background: var(--primary);
+    color: black;
 }
 
-/* CONTROLS */
-.controls{
-position:fixed;
-bottom:20px;
-right:20px;
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 242, 255, 0.4);
 }
 
-button{
-margin:5px;
-padding:10px;
+#signup-btn {
+    background: transparent;
+    color: white;
+    border: 1px solid var(--glass-border);
 }
 
-/* JOYSTICK */
-#joystick-zone{
-position:fixed;
-bottom:20px;
-left:20px;
-width:120px;
-height:120px;
+/* HUD / STATS */
+#stats {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-family: monospace;
+    background: var(--glass);
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 3px solid var(--primary);
+}
+
+/* SIDE PANELS (Friends & Profile) */
+#friends, #profile {
+    position: fixed;
+    background: var(--glass);
+    backdrop-filter: blur(5px);
+    padding: 15px;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+}
+
+#friends { top: 100px; left: 20px; width: 200px; }
+#profile { top: 100px; right: 20px; width: 180px; }
+
+/* CHAT BOX */
+#chat-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 350px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+}
+
+#chat-messages {
+    height: 150px;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#chat-input {
+    border-radius: 0;
+    margin-bottom: 0;
+    border: none;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* CONTROLS (Attack button & Joystick) */
+.controls {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+}
+
+#btn-attack {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ff4b2b, #ff416c);
+    color: white;
+    box-shadow: 0 0 20px rgba(255, 75, 43, 0.5);
+}
+
+#joystick-zone {
+    position: fixed;
+    bottom: 40px;
+    left: 40px;
+    opacity: 0.7;
+}
+
+/* CANVAS */
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
 }
 </style>
 
