@@ -4,47 +4,164 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AURA RISE</title>
-<link rel="stylesheet" href="style.css">
-</head>
 
-<body>
+<style>
+body,html{
+margin:0;
+padding:0;
+background:#0a0a0f;
+color:white;
+font-family:sans-serif;
+overflow:hidden;
+}
 
-<div id="auth-screen" class="modal">
-    <h1>AURA RISE</h1>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button id="login-btn">Login</button>
-    <button id="signup-btn">Sign Up</button>
-</div>
+/* LOGO */
+#logo{
+position:fixed;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+font-size:26px;
+color:#00f2ff;
+}
 
-<div id="lobby-screen" class="modal" style="display:none;">
-    <h2>Lobby</h2>
-    <button id="join-btn">Play</button>
-</div>
+/* AUTH */
+.modal{
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:#111;
+padding:20px;
+text-align:center;
+}
 
-<div id="game-ui" style="display:none;">
-    <div class="hud">
-        <div class="hp-container"><div id="hp-bar"></div></div>
-    </div>
+/* HUD */
+#stats{
+position:fixed;
+top:10px;
+left:10px;
+font-size:14px;
+}
 
-    <div class="controls">
-        <button id="btn-up">↑</button>
-        <button id="btn-down">↓</button>
-        <button id="btn-left">←</button>
-        <button id="btn-right">→</button>
-        <button id="btn-attack">⚔️</button>
-    </div>
-</div>
-<div id="joystick-zone" style="
+/* FRIENDS */
+#friends{
+position:fixed;
+top:80px;
+left:10px;
+background:#111;
+padding:10px;
+width:150px;
+}
+
+/* PROFILE */
+#profile{
+position:fixed;
+top:80px;
+right:10px;
+background:#111;
+padding:10px;
+width:150px;
+}
+
+/* CHAT */
+#chat-box{
+position:fixed;
+bottom:10px;
+left:50%;
+transform:translateX(-50%);
+width:300px;
+background:#111;
+}
+
+#chat-messages{
+height:120px;
+overflow-y:auto;
+font-size:12px;
+}
+
+/* CONTROLS */
+.controls{
+position:fixed;
+bottom:20px;
+right:20px;
+}
+
+button{
+margin:5px;
+padding:10px;
+}
+
+/* JOYSTICK */
+#joystick-zone{
 position:fixed;
 bottom:20px;
 left:20px;
 width:120px;
 height:120px;
-"></div>
+}
+</style>
+
+</head>
+<body>
+
+<div id="logo">MAHARO STUDIO</div>
+
+<div id="stats">
+<div id="fps">FPS: 0</div>
+<div id="ping">Ping: 0</div>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen" class="modal">
+<h1>AURA RISE</h1>
+<input id="name" placeholder="Nom"><br>
+<input id="email" placeholder="Email"><br>
+<input id="password" type="password" placeholder="Password"><br>
+<button id="login-btn">Login</button>
+<button id="signup-btn">Sign Up</button>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby-screen" class="modal" style="display:none;">
+<h2>Lobby</h2>
+<button id="join-btn">Play</button>
+</div>
+
+<!-- GAME UI -->
+<div id="game-ui" style="display:none;">
+
+<div id="friends">
+<input id="search" placeholder="Search">
+<ul id="friend-list"></ul>
+</div>
+
+<div id="profile">
+<div id="profile-name"></div>
+<div id="profile-kills"></div>
+</div>
+
+<div id="chat-box">
+<div id="chat-messages"></div>
+<input id="chat-input">
+<button id="send-btn">Send</button>
+</div>
+
+<div id="joystick-zone"></div>
+
+<div class="controls">
+<button id="btn-attack">Attack</button>
+</div>
+
+</div>
+
 <canvas id="gameCanvas"></canvas>
 
+<!-- JOYSTICK LIB -->
+<script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+
+<!-- JS -->
 <script type="module" src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+
 </body>
 </html>
