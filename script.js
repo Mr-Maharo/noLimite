@@ -13,10 +13,7 @@ const firebaseConfig = {
   appId: "1:779663542451:web:e87cd9eba6d8e1bcfd88c6",
   measurementId: "G-VZTK4QBN2J"
 };
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+// --- (Ny imports sy Firebase config mbola mitovy foana) ---
 
 // --- GAME STATE ---
 const canvas = document.getElementById('gameCanvas');
@@ -26,30 +23,21 @@ canvas.height = window.innerHeight;
 
 let playerId, playerRef;
 let players = {};
+let frameCount = 0; // Ho an'ny animation aura
+
 let localPlayer = {
     x: Math.random() * 1000,
     y: Math.random() * 1000,
     hp: 100,
     name: "Hunter",
-    isAttacking: false,
-    auraIntensity: 0
+    isAttacking: false
 };
 
-let zoneRadius = 2000;
 const MAP_SIZE = 3000;
+let zoneRadius = 2000;
 
-// --- AUTH LOGIC ---
-document.getElementById('signup-btn').onclick = () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    createUserWithEmailAndPassword(auth, email, pass);
-};
-
-document.getElementById('login-btn').onclick = () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    signInWithEmailAndPassword(auth, email, pass);
-};
+// --- AUTH & JOIN LOGIC ---
+// (Ampiasao ilay login/signup efa nataonao teo ambony)
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -67,11 +55,9 @@ document.getElementById('join-btn').onclick = () => {
 };
 
 function initGame() {
-    // Sync Local to Cloud
     set(playerRef, localPlayer);
     onDisconnect(playerRef).remove();
 
-    // Listen for all players
     onValue(ref(db, 'players'), (snapshot) => {
         players = snapshot.val() || {};
     });
@@ -79,168 +65,64 @@ function initGame() {
     gameLoop();
 }
 
-// --- INPUTS ---
+// --- INPUTS (KEYBOARD + MOBILE) ---
 const keys = {};
 window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
 window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+function setupMobileBtn(id, key) {
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    
+    const startAction = (e) => { e.preventDefault(); keys[key] = true; };
+    const endAction = (e) => { e.preventDefault(); keys[key] = false; };
+
+    btn.ontouchstart = startAction;
+    btn.ontouchend = endAction;
+    btn.onmousedown = startAction;
+    btn.onmouseup = endAction;
+}
+
+setupMobileBtn('btn-up', 'w');
+setupMobileBtn('btn-down', 's');
+setupMobileBtn('btn-left', 'a');
+setupMobileBtn('btn-right', 'd');
+
+// Bouton Attack manokana
+const atkBtn = document.getElementById('btn-attack');
+if(atkBtn) {
+    atkBtn.ontouchstart = () => { 
+        localPlayer.isAttacking = true; 
+        update(playerRef, { isAttacking: true });
+    };
+    atkBtn.ontouchend = () => { 
+        localPlayer.isAttacking = false; 
+        update(playerRef, { isAttacking: false });
+    };
+}
 
 // --- GAME LOGIC ---
 function updatePlayer() {
     let moved = false;
     const speed = 5;
-    if (keys['w'] || keys['arrowup']) { localPlayer.y -= speed; moved = true; }
-    if (keys['s'] || keys['arrowdown']) { localPlayer.y += speed; moved = true; }
-    if (keys['a'] || keys['arrowleft']) { localPlayer.x -= speed; moved = true; }
-    if (keys['d'] || keys['arrowright']) { localPlayer.x += speed; moved = true; }
+    
+    if (keys['w']) { localPlayer.y -= speed; moved = true; }
+    if (keys['s']) { localPlayer.y += speed; moved = true; }
+    if (keys['a']) { localPlayer.x -= speed; moved = true; }
+    if (keys['d']) { localPlayer.x += speed; moved = true; }
 
     if (moved) {
         update(playerRef, { x: localPlayer.x, y: localPlayer.y });
     }
 
-    // Zone Damage Logic
     const distFromCenter = Math.hypot(localPlayer.x - MAP_SIZE/2, localPlayer.y - MAP_SIZE/2);
     if (distFromCenter > zoneRadius) {
         localPlayer.hp -= 0.1;
         update(playerRef, { hp: localPlayer.hp });
     }
     
-    // UI Update
     document.getElementById('hp-bar').style.width = localPlayer.hp + "%";
 }
-
-function drawStickman(p, id) {
-    const isLocal = id === playerId;
-    
-    // Camera follow (simple offset)
-    const offsetX = canvas.width/2 - localPlayer.x;
-    const offsetY = canvas.height/2 - localPlayer.y;
-    const px = p.x + offsetX;
-    const py = p.y + offsetY;
-
-    // Solo Leveling Aura
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = isLocal ? "#00f2ff" : "#ff0055";
-    
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 3;
-
-    // Head
-    ctx.beginPath();
-    ctx.arc(px, py - 20, 10, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Body
-    ctx.beginPath();
-    ctx.moveTo(px, py - 10);
-    ctx.lineTo(px, py + 10);
-    // Arms
-    ctx.moveTo(px - 15, py);
-    ctx.lineTo(px + 15, py);
-    // Legs
-    ctx.moveTo(px, py + 10);
-    ctx.lineTo(px - 10, py + 25);
-    ctx.moveTo(px, py + 10);
-    ctx.lineTo(px + 10, py + 25);
-    ctx.stroke();
-
-    // Name Tag
-    ctx.fillStyle = "white";
-    ctx.fillText(p.name || "Hunter", px - 20, py - 40);
-}
-
-function drawZone() {
-    const offsetX = canvas.width/2 - localPlayer.x;
-    const offsetY = canvas.height/2 - localPlayer.y;
-    
-    ctx.beginPath();
-    ctx.strokeStyle = "purple";
-    ctx.lineWidth = 10;
-    ctx.arc(MAP_SIZE/2 + offsetX, MAP_SIZE/2 + offsetY, zoneRadius, 0, Math.PI*2);
-    ctx.stroke();
-    
-    zoneRadius -= 0.05; // Shrink
-}
-
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    updatePlayer();
-    drawZone();
-
-    Object.keys(players).forEach(id => {
-        drawStickman(players[id], id);
-    });
-
-    requestAnimationFrame(gameLoop);
-}
-
-// Mobile Button Examples
-document.getElementById('btn-attack').onclick = () => {
-    // Basic hit detection logic would go here
-    console.log("Attack!");
-};
-document.getElementById('login-btn').onclick = async () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-
-    if (!email.includes("@")) {
-        alert("Email tsy valide!");
-        return;
-    }
-
-    try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        alert("Login OK 🔥");
-    } catch (err) {
-        alert(err.message);
-    }
-};
-document.getElementById('signup-btn').onclick = async () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-
-    try {
-        await createUserWithEmailAndPassword(auth, email, pass);
-        alert("Compte créé 🔥");
-    } catch (err) {
-        alert(err.message);
-    }
-};
-// --- MOBILE CONTROLS LOGIC ---
-const mobileKeys = {
-    'w': false,
-    's': false,
-    'a': false,
-    'd': false
-};
-
-function setupMobileBtn(id, key) {
-    const btn = document.getElementById(id);
-    
-    // Rehefa tendrena (Start)
-    btn.ontouchstart = (e) => {
-        e.preventDefault();
-        keys[key] = true;
-    };
-    
-    // Rehefa esorina ny rantsan-tanana (End)
-    btn.ontouchend = (e) => {
-        e.preventDefault();
-        keys[key] = false;
-    };
-
-    // Ho an'ny Mouse koa raha tiana ho sedraina amin'ny PC
-    btn.onmousedown = () => keys[key] = true;
-    btn.onmouseup = () => keys[key] = false;
-}
-
-// Ampifandraisina ny bokotra sy ny hetsika
-setupMobileBtn('btn-up', 'w');
-setupMobileBtn('btn-down', 's');
-setupMobileBtn('btn-left', 'a');
-setupMobileBtn('btn-right', 'd');
-
-let frameCount = 0; // Ampio any ambony ity
 
 function drawPlayerOrb(p, id) {
     const isLocal = id === playerId;
@@ -249,49 +131,69 @@ function drawPlayerOrb(p, id) {
     const px = p.x + offsetX;
     const py = p.y + offsetY;
 
-    frameCount++;
-
-    // 1. AURA ANIMATION
+    // 1. AURA PULSE
     const pulse = Math.sin(frameCount * 0.1) * 5;
-    const auraColor = isLocal ? "rgba(0, 242, 255," : "rgba(255, 0, 85,";
+    const auraColor = isLocal ? "0, 242, 255" : "255, 0, 85";
     
-    // Sosona aura maromaro
     for(let i = 3; i > 0; i--) {
         ctx.beginPath();
-        ctx.arc(px, py, 20 + (i * 5) + pulse, 0, Math.PI * 2);
-        ctx.fillStyle = `${auraColor} ${0.1 / i})`;
+        ctx.arc(px, py, 18 + (i * 6) + pulse, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${auraColor}, ${0.15 / i})`;
         ctx.fill();
     }
 
-    // 2. NY CORE (Ilay boribory eo afovoany)
-    ctx.shadowBlur = 20;
+    // 2. CORE GLOW
+    ctx.shadowBlur = 15;
     ctx.shadowColor = isLocal ? "#00f2ff" : "#ff0055";
     
-    // Effect "Glow"
-    const grad = ctx.createRadialGradient(px, py, 5, px, py, 20);
-    grad.addColorStop(0, "white");
+    const grad = ctx.createRadialGradient(px, py, 2, px, py, 15);
+    grad.addColorStop(0, "#fff");
     grad.addColorStop(1, isLocal ? "#00f2ff" : "#ff0055");
 
     ctx.beginPath();
     ctx.arc(px, py, 15, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
-    
-    // 3. EFFECT ATTACK (Raha manindry attack)
+    ctx.shadowBlur = 0;
+
+    // 3. ATTACK VISUAL
     if (p.isAttacking) {
         ctx.beginPath();
-        ctx.arc(px, py, 40 + pulse * 2, 0, Math.PI * 2);
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
+        ctx.arc(px, py, 35 + pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 3;
         ctx.stroke();
     }
 
-    // Reset shadow
-    ctx.shadowBlur = 0;
-
-    // Name Tag
+    // Name
     ctx.fillStyle = "white";
-    ctx.font = "bold 14px Arial";
+    ctx.font = "bold 12px Arial";
     ctx.textAlign = "center";
     ctx.fillText(p.name || "Hunter", px, py - 35);
+}
+
+function drawZone() {
+    const offsetX = canvas.width/2 - localPlayer.x;
+    const offsetY = canvas.height/2 - localPlayer.y;
+    
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(128, 0, 128, 0.5)";
+    ctx.lineWidth = 5;
+    ctx.arc(MAP_SIZE/2 + offsetX, MAP_SIZE/2 + offsetY, zoneRadius, 0, Math.PI*2);
+    ctx.stroke();
+    zoneRadius -= 0.02;
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frameCount++;
+    
+    updatePlayer();
+    drawZone();
+
+    Object.keys(players).forEach(id => {
+        drawPlayerOrb(players[id], id);
+    });
+
+    requestAnimationFrame(gameLoop);
 }
