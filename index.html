@@ -1,14 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Multiplayer Game</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Leveling: BR</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="ui-layer">
+        <div id="auth-screen" class="modal">
+            <h1>AURA RISE</h1>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn">Login</button>
+            <button id="signup-btn">Sign Up</button>
+        </div>
 
-<canvas id="game" width="800" height="500"></canvas>
+        <div id="lobby-screen" class="modal" style="display:none;">
+            <h2>Lobby</h2>
+            <div id="stats-display"></div>
+            <button id="join-btn">Quick Join Game</button>
+        </div>
 
-<script type="module" src="script.js"></script>
-  
+        <div id="game-ui" style="display:none;">
+            <div class="hud">
+                <div id="player-name">Player</div>
+                <div class="hp-container"><div id="hp-bar"></div></div>
+                <div id="zone-timer">Zone Shrinking...</div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn" id="btn-move">🕹️</button>
+                <button class="btn" id="btn-attack">⚔️</button>
+                <button class="btn" id="btn-dash">💨</button>
+                <button class="btn" id="btn-skill">🔥</button>
+                <button class="btn" id="btn-heal">💊</button>
+                <button class="btn" id="btn-interact">🖐️</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
