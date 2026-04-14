@@ -1,7 +1,22 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+const joinBtn = document.getElementById("join-btn");
+const authScreen = document.getElementById("auth-screen");
+const lobbyScreen = document.getElementById("lobby-screen");
+const gameUI = document.getElementById("game-ui");
 
+const btnAttack = document.getElementById("btn-attack");
+
+const fpsEl = document.getElementById("fps");
+const pingEl = document.getElementById("ping");
+
+const chatInput = document.getElementById("chat-input");
+const chatMessages = document.getElementById("chat-messages");
+const sendBtn = document.getElementById("send-btn");
+
+const searchInput = document.getElementById("search");
+const friendList = document.getElementById("friend-list");
 // FIREBASE CONFIG
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
