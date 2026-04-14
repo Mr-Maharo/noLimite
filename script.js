@@ -1,163 +1,236 @@
-import{initializeApp as _0x1a}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import{getDatabase as _0x2b,ref as _0x3c,set as _0x4d,onValue as _0x5e,update as _0x6f,remove as _0x7g,onDisconnect as _0x8h}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import{getAuth as _0x9i,signInWithEmailAndPassword as _0x10j,createUserWithEmailAndPassword as _0x11k,onAuthStateChanged as _0x12l}from"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const _0xconf={apiKey:"AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",authDomain:"nolimite-29e0b.firebaseapp.com",databaseURL:"https://nolimite-29e0b-default-rtdb.europe-west1.firebasedatabase.app",projectId:"nolimite-29e0b"};
+// FIREBASE CONFIG
+const firebaseConfig = {
+    apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
+    authDomain: "nolimite-29e0b.firebaseapp.com",
+    databaseURL: "https://nolimite-29e0b-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "nolimite-29e0b",
+};
 
-const _0xapp=_0x1a(_0xconf);
-const _0xdb=_0x2b(_0xapp);
-const _0xauth=_0x9i(_0xapp);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
 
-const _0xc=document.getElementById("gameCanvas");
-const _0xctx=_0xc.getContext("2d");
+// CANVAS
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; }
+window.onresize=resize; resize();
 
-function _0xresize(){_0xc.width=innerWidth;_0xc.height=innerHeight}
-onresize=_0xresize;_0xresize();
+// DATA
+let myId;
+let players={};
+let me={
+    x:Math.random()*2000+500,
+    y:Math.random()*2000+500,
+    hp:100,
+    kills:0,
+    name:"Player"
+};
 
-let _0xid,_0xpl={};
-let _0xme={x:Math.random()*2000+500,y:Math.random()*2000+500,hp:100,kills:0,name:"P_"+Math.floor(Math.random()*999)};
-const _0xmap=3000;
-let _0xzone=1200;
+const MAP_SIZE=3000;
+let zoneRadius=1200;
 
-document.getElementById("signup-btn").onclick=()=>{
-let e=document.getElementById("email").value;
-let p=document.getElementById("password").value;
-_0x11k(_0xauth,e,p).catch(e=>alert(e.message))
+// AUTH
+document.getElementById("signup-btn").onclick=async()=>{
+    let email=emailInput.value;
+    let pass=passwordInput.value;
+    let name=nameInput.value;
+
+    try{
+        let userCred=await createUserWithEmailAndPassword(auth,email,pass);
+        await updateProfile(userCred.user,{displayName:name});
+        await sendEmailVerification(userCred.user);
+        alert("Verify your email");
+    }catch(e){ alert(e.message); }
 };
 
 document.getElementById("login-btn").onclick=()=>{
-let e=document.getElementById("email").value;
-let p=document.getElementById("password").value;
-_0x10j(_0xauth,e,p).catch(e=>alert(e.message))
+    signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value)
+    .catch(e=>alert(e.message));
 };
 
-_0x12l(_0xauth,u=>{
-if(u){
-document.getElementById("auth-screen").style.display="none";
-document.getElementById("lobby-screen").style.display="block";
-}
+const emailInput=document.getElementById("email");
+const passwordInput=document.getElementById("password");
+const nameInput=document.getElementById("name");
+
+onAuthStateChanged(auth,user=>{
+    if(user){
+        if(!user.emailVerified){
+            alert("Verify email first");
+            signOut(auth);
+            return;
+        }
+
+        me.name=user.displayName||"Player";
+
+        authScreen.style.display="none";
+        lobbyScreen.style.display="block";
+    }
 });
 
-document.getElementById("join-btn").onclick=()=>{
-document.getElementById("lobby-screen").style.display="none";
-document.getElementById("game-ui").style.display="block";
-_0xstart()
+// START GAME
+joinBtn.onclick=()=>{
+    lobbyScreen.style.display="none";
+    gameUI.style.display="block";
+    startGame();
 };
 
-function _0xstart(){
-_0xid=_0xauth.currentUser.uid;
-let r=_0x3c(_0xdb,"players/"+_0xid);
-_0x4d(r,_0xme);
-_0x8h(r).remove();
+function startGame(){
+    myId=auth.currentUser.uid;
+    let pRef=ref(db,"players/"+myId);
 
-_0x5e(_0x3c(_0xdb,"players"),s=>{
-_0xpl=s.val()||{};
-if(!_0xpl[_0xid])location.reload()
+    set(pRef,me);
+    onDisconnect(pRef).remove();
+
+    onValue(ref(db,"players"),snap=>{
+        players=snap.val()||{};
+        if(!players[myId]) location.reload();
+    });
+
+    setupJoystick(pRef);
+    draw();
+}
+
+// JOYSTICK
+function setupJoystick(pRef){
+    const manager=nipplejs.create({
+        zone:document.getElementById("joystick-zone"),
+        mode:"static",
+        position:{left:"50%",top:"50%"}
+    });
+
+    manager.on("move",(e,data)=>{
+        if(data.vector){
+            let speed=10;
+            me.x+=data.vector.x*speed;
+            me.y-=data.vector.y*speed;
+            update(pRef,{x:me.x,y:me.y});
+        }
+    });
+
+    btnAttack.onclick=attack;
+}
+
+// ATTACK
+function attack(){
+    for(let id in players){
+        if(id===myId) continue;
+        let p=players[id];
+        let d=Math.hypot(me.x-p.x,me.y-p.y);
+
+        if(d<80){
+            let hp=(p.hp||100)-15;
+            if(hp<=0){
+                remove(ref(db,"players/"+id));
+                me.kills++;
+                update(ref(db,"players/"+myId),{kills:me.kills});
+            }else{
+                update(ref(db,"players/"+id),{hp:hp});
+            }
+        }
+    }
+}
+
+// ZONE
+setInterval(()=>{ if(zoneRadius>200) zoneRadius-=2; },1000);
+
+function zoneDamage(){
+    let d=Math.hypot(me.x-MAP_SIZE/2,me.y-MAP_SIZE/2);
+    if(d>zoneRadius){
+        me.hp-=0.3;
+        update(ref(db,"players/"+myId),{hp:me.hp});
+    }
+}
+
+// FPS
+let last=performance.now();
+function updateFPS(){
+    let now=performance.now();
+    let fps=Math.round(1000/(now-last));
+    last=now;
+    fpsEl.innerText="FPS: "+fps;
+}
+
+// PING
+setInterval(()=>{
+    let start=performance.now();
+    update(ref(db,"ping/test"),{t:Date.now()}).then(()=>{
+        pingEl.innerText="Ping: "+Math.round(performance.now()-start)+" ms";
+    });
+},2000);
+
+// CHAT
+sendBtn.onclick=()=>{
+    let msg=chatInput.value;
+    if(!msg) return;
+
+    set(ref(db,"chat/"+Date.now()),{
+        name:me.name,
+        text:msg
+    });
+    chatInput.value="";
+};
+
+onValue(ref(db,"chat"),snap=>{
+    let data=snap.val()||{};
+    chatMessages.innerHTML="";
+    Object.values(data).slice(-20).forEach(m=>{
+        let div=document.createElement("div");
+        div.innerText=m.name+": "+m.text;
+        chatMessages.appendChild(div);
+    });
 });
 
-_0xjoy(r);
-_0xdraw()
+// SEARCH
+searchInput.oninput=updateFriends;
+
+function updateFriends(){
+    friendList.innerHTML="";
+    let key=searchInput.value.toLowerCase();
+
+    for(let id in players){
+        let p=players[id];
+        if(!p.name.toLowerCase().includes(key)) continue;
+
+        let li=document.createElement("li");
+        li.innerText=p.name;
+        friendList.appendChild(li);
+    }
 }
 
-function _0xjoy(r){
-let m=nipplejs.create({zone:document.getElementById("joystick-zone"),mode:"static",position:{left:"50%",top:"50%"},color:"cyan"});
+// DRAW
+function draw(){
+    ctx.fillStyle="#0a0a0f";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-m.on("move",(e,d)=>{
-if(d.vector){
-let sp=12;
-_0xme.x=Math.max(0,Math.min(_0xmap,_0xme.x+d.vector.x*sp));
-_0xme.y=Math.max(0,Math.min(_0xmap,_0xme.y-d.vector.y*sp));
-_0x6f(r,{x:_0xme.x,y:_0xme.y})
-}
-});
+    zoneDamage();
+    updateFPS();
 
-document.getElementById("btn-attack").onclick=_0xatk
-}
+    let cx=canvas.width/2-me.x;
+    let cy=canvas.height/2-me.y;
 
-function _0xatk(){
-for(let i in _0xpl){
-if(i===_0xid)continue;
-let e=_0xpl[i];
-let d=Math.hypot(_0xme.x-e.x,_0xme.y-e.y);
+    ctx.beginPath();
+    ctx.arc(MAP_SIZE/2+cx,MAP_SIZE/2+cy,zoneRadius,0,Math.PI*2);
+    ctx.strokeStyle="purple";
+    ctx.stroke();
 
-if(d<80){
-let hp=(e.hp||100)-15;
-if(hp<=0){
-_0x7g(_0x3c(_0xdb,"players/"+i));
-_0xme.kills++;
-_0x6f(_0x3c(_0xdb,"players/"+_0xid),{kills:_0xme.kills})
-}else{
-_0x6f(_0x3c(_0xdb,"players/"+i),{hp:hp})
-}
-}
-}
-}
+    for(let id in players){
+        let p=players[id];
+        let x=p.x+cx;
+        let y=p.y+cy;
 
-setInterval(()=>{if(_0xzone>200)_0xzone-=2},1000);
+        ctx.fillStyle=id===myId?"cyan":"red";
+        ctx.beginPath();
+        ctx.arc(x,y,20,0,Math.PI*2);
+        ctx.fill();
 
-function _0xzoneD(){
-let d=Math.hypot(_0xme.x-_0xmap/2,_0xme.y-_0xmap/2);
-if(d>_0xzone){
-_0xme.hp-=0.3;
-_0x6f(_0x3c(_0xdb,"players/"+_0xid),{hp:_0xme.hp})
-}
-}
+        ctx.fillStyle="white";
+        ctx.fillText(p.name,x,y-30);
+    }
 
-function _0xdraw(){
-_0xctx.fillStyle="#0a0a0f";
-_0xctx.fillRect(0,0,_0xc.width,_0xc.height);
-
-_0xzoneD();
-
-let cx=_0xc.width/2-_0xme.x;
-let cy=_0xc.height/2-_0xme.y;
-
-_0xctx.strokeStyle="rgba(0,255,255,0.05)";
-for(let x=0;x<=_0xmap;x+=100){
-_0xctx.beginPath();
-_0xctx.moveTo(x+cx,cy);
-_0xctx.lineTo(x+cx,_0xmap+cy);
-_0xctx.stroke()
-}
-for(let y=0;y<=_0xmap;y+=100){
-_0xctx.beginPath();
-_0xctx.moveTo(cx,y+cy);
-_0xctx.lineTo(_0xmap+cx,y+cy);
-_0xctx.stroke()
-}
-
-_0xctx.beginPath();
-_0xctx.arc(_0xmap/2+cx,_0xmap/2+cy,_0xzone,0,Math.PI*2);
-_0xctx.strokeStyle="purple";
-_0xctx.lineWidth=10;
-_0xctx.stroke();
-
-for(let i in _0xpl){
-let p=_0xpl[i];
-let sx=p.x+cx;
-let sy=p.y+cy;
-
-_0xctx.fillStyle=i===_0xid?"cyan":"red";
-_0xctx.beginPath();
-_0xctx.arc(sx,sy,20,0,Math.PI*2);
-_0xctx.fill();
-
-_0xctx.fillStyle="#333";
-_0xctx.fillRect(sx-25,sy-35,50,6);
-_0xctx.fillStyle=(p.hp||100)>40?"#0f0":"#f00";
-_0xctx.fillRect(sx-25,sy-35,((p.hp||100)/100)*50,6);
-
-_0xctx.fillStyle="white";
-_0xctx.font="12px Arial";
-_0xctx.textAlign="center";
-_0xctx.fillText(p.name||"P",sx,sy-45)
-}
-
-_0xctx.fillStyle="white";
-_0xctx.font="bold 20px sans-serif";
-_0xctx.textAlign="left";
-_0xctx.fillText("Kills: "+_0xme.kills,20,40);
-_0xctx.fillText("HP: "+Math.floor(_0xme.hp)+"%",20,70);
-
-requestAnimationFrame(_0xdraw)
+    requestAnimationFrame(draw);
 }
