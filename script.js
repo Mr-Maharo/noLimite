@@ -197,30 +197,43 @@ function gameLoop() {
 
     requestAnimationFrame(gameLoop);
 }
-// Ataovy azo antoka fa hita ilay bokotra vao asiana event
-const atkBtn = document.getElementById('btn-attack');
+// Function hanamorana ny fifehezana bokotra
+function bindAction(id, property) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
 
-if (atkBtn) {
-    // Ho an'ny Mobile
-    atkBtn.addEventListener('touchstart', (e) => {
+    const startAction = (e) => {
         e.preventDefault();
-        localPlayer.isAttacking = true;
-        update(playerRef, { isAttacking: true });
-    });
+        localPlayer[property] = true;
+        // Ampitaina any amin'ny Firebase avy hatrany
+        const data = {};
+        data[property] = true;
+        update(playerRef, data);
+        
+        // Raha "Heal" no tsindrina, averina ho 100 ny HP
+        if(property === 'isHealing' && localPlayer.hp < 100) {
+            localPlayer.hp = Math.min(100, localPlayer.hp + 10);
+            update(playerRef, { hp: localPlayer.hp });
+        }
+    };
 
-    atkBtn.addEventListener('touchend', (e) => {
+    const endAction = (e) => {
         e.preventDefault();
-        localPlayer.isAttacking = false;
-        update(playerRef, { isAttacking: false });
-    });
+        localPlayer[property] = false;
+        const data = {};
+        data[property] = false;
+        update(playerRef, data);
+    };
 
-    // Ho an'ny PC (sedra fotsiny)
-    atkBtn.onmousedown = () => {
-        localPlayer.isAttacking = true;
-        update(playerRef, { isAttacking: true });
-    };
-    atkBtn.onmouseup = () => {
-        localPlayer.isAttacking = false;
-        update(playerRef, { isAttacking: false });
-    };
+    btn.ontouchstart = startAction;
+    btn.ontouchend = endAction;
+    btn.onmousedown = startAction;
+    btn.onmouseup = endAction;
 }
+
+// Ampifandraisina amin'ny localPlayer state ny bokotra rehetra
+bindAction('btn-attack', 'isAttacking');
+bindAction('btn-dash', 'isDashing');
+bindAction('btn-skill', 'isUsingSkill');
+bindAction('btn-heal', 'isHealing');
+bindAction('btn-interact', 'isInteracting');
