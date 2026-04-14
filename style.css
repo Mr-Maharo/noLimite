@@ -1,47 +1,91 @@
 body,html{
 margin:0;
 padding:0;
-background:#000;
+background:linear-gradient(135deg,#0a0a0a,#1a0033);
 color:white;
-overflow:hidden;
 font-family:sans-serif;
+overflow:hidden;
 }
 
-canvas{
-display:block;
-background:#111;
-}
-
+/* MODAL */
 .modal{
 position:fixed;
 top:50%;
 left:50%;
 transform:translate(-50%,-50%);
-background:#111;
-padding:20px;
-border:2px solid cyan;
+background:rgba(0,0,0,0.8);
+padding:30px;
+border-radius:15px;
+border:2px solid #00f2ff;
+box-shadow:0 0 30px #00f2ff;
+text-align:center;
 }
 
+/* INPUT */
+input{
+width:80%;
+padding:12px;
+margin:10px;
+border:none;
+border-radius:8px;
+background:#111;
+color:white;
+outline:none;
+}
+
+/* BUTTON */
+button{
+padding:12px 20px;
+margin:10px;
+border:none;
+border-radius:10px;
+background:#00f2ff;
+color:black;
+font-weight:bold;
+cursor:pointer;
+transition:0.2s;
+}
+
+button:hover{
+transform:scale(1.1);
+background:#00ffff;
+}
+
+/* GAME */
+canvas{
+display:block;
+background:#111;
+}
+
+/* CONTROLS */
 .controls{
 position:fixed;
 bottom:20px;
 right:20px;
 display:grid;
-grid-template-columns:repeat(3,60px);
+grid-template-columns:repeat(3,70px);
 gap:10px;
 }
 
-button{
-padding:10px;
+.controls button{
+background:rgba(0,242,255,0.2);
+border:2px solid #00f2ff;
+color:white;
+font-size:20px;
+border-radius:50%;
 }
 
+/* HP */
 .hp-container{
 width:200px;
 height:20px;
 background:#333;
+border-radius:10px;
+overflow:hidden;
 }
+
 #hp-bar{
 height:100%;
-width:100%;
 background:red;
+transition:0.3s;
 }
