@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // ELEMENTS
 const joinBtn = document.getElementById("join-btn");
@@ -49,7 +49,7 @@ let zoneRadius = 1200;
 
 // ================= AUTH =================
 
-// SIGNUP
+// SIGNUP (tsy misy verify)
 document.getElementById("signup-btn").onclick = async () => {
     try {
         let userCred = await createUserWithEmailAndPassword(
@@ -62,9 +62,7 @@ document.getElementById("signup-btn").onclick = async () => {
             displayName: nameInput.value
         });
 
-        await sendEmailVerification(userCred.user);
-
-        alert("Check your email then login");
+        alert("Compte créé !");
     } catch(e){
         alert(e.message);
     }
@@ -78,22 +76,12 @@ document.getElementById("login-btn").onclick = async () => {
             emailInput.value,
             passwordInput.value
         );
-
-        // IMPORTANT FIX
-        await auth.currentUser.reload();
-
-        if(!auth.currentUser.emailVerified){
-            alert("Verify email first");
-            await signOut(auth);
-            return;
-        }
-
     } catch(e){
         alert(e.message);
     }
 };
 
-// AUTH STATE
+// AUTH STATE (direct access)
 onAuthStateChanged(auth,user=>{
     if(user){
         me.name = user.displayName || "Player";
@@ -171,13 +159,11 @@ function draw(){
     let cx=canvas.width/2-me.x;
     let cy=canvas.height/2-me.y;
 
-    // zone
     ctx.beginPath();
     ctx.arc(MAP_SIZE/2+cx,MAP_SIZE/2+cy,zoneRadius,0,Math.PI*2);
     ctx.strokeStyle="purple";
     ctx.stroke();
 
-    // players
     for(let id in players){
         let p=players[id];
         let x=p.x+cx;
