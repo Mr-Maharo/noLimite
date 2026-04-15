@@ -119,18 +119,32 @@ document.addEventListener("DOMContentLoaded", () => {
 // 3. AUTH & SYNC LOGIC
 // ==========================================
 
+// --- Jereo ity ampahany ity ao amin'ny onAuthStateChanged ---
 onAuthStateChanged(auth, user => {
     if (user) {
         myId = user.uid;
         myUsername = user.displayName || "Survivor";
         
-        const authScr = document.getElementById("auth-screen");
-        const mainHub = document.getElementById("main-hub");
+        // Mampiseho ny anarana eo amin'ny Top Bar
         const topUser = document.getElementById("top-username");
-
-        if (authScr) authScr.style.display = "none";
-        if (mainHub) mainHub.style.display = "block";
         if (topUser) topUser.innerText = myUsername;
+
+        // Maka ny Statistika avy any amin'ny Database
+        onValue(ref(db, `players/${myId}`), (snap) => {
+            const data = snap.val();
+            if (data) {
+                // Manavao ny isa ao amin'ny pejy Profile (Vault)
+                const profKills = document.getElementById("prof-kills");
+                const profHp = document.getElementById("prof-hp");
+                
+                if (profKills) profKills.innerText = data.kills || 0;
+                if (profHp) profHp.innerText = Math.floor(data.hp || 100);
+            }
+        });
+
+        // Hanafina ny Login sy hampiseho ny Lobby
+        toggleUI("auth-screen", false);
+        toggleUI("main-hub", true);
         
         initChat();
         syncGlobalData();
