@@ -58,12 +58,34 @@ if (btnGoogle) {
     });
 }
 
-// ================= SAVE USER =================
+// ================= SAVE USER (FIX DUPLICATE EMAIL) =================
 async function saveUserStatus(user, isOnline) {
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
+    const usersRef = collection(db, "users");
+    const snapshot = await getDocs(usersRef);
+
+    let existingDocId = null;
+
+    snapshot.forEach(docu => {
+        const data = docu.data();
+        if (data.email === user.email) {
+            existingDocId = docu.id;
+        }
+    });
+
+    if (existingDocId) {
+        const userRef = doc(db, "users", existingDocId);
+
+        await updateDoc(userRef, {
+            online: isOnline,
+            lastSeen: serverTimestamp(),
+            name: user.displayName,
+            avatar: user.photoURL
+        });
+
+    } else {
+        const userRef = doc(db, "users", user.uid);
+
         await setDoc(userRef, {
             name: user.displayName,
             avatar: user.photoURL,
@@ -72,16 +94,8 @@ async function saveUserStatus(user, isOnline) {
             createdAt: serverTimestamp(),
             lastSeen: serverTimestamp()
         });
-    } else {
-        await updateDoc(userRef, {
-            online: isOnline,
-            lastSeen: serverTimestamp(),
-            name: user.displayName,
-            avatar: user.photoURL
-        });
     }
 }
-
 // ================= PROFILE =================
 function updateUIProfile(user) {
     const avatar = document.getElementById('user-avatar');
