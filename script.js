@@ -40,7 +40,6 @@ onAuthStateChanged(auth, (user) => {
         updateUIProfile(user);
         initLobby();
         saveUserStatus(user, true);
-
     } else {
         if (login) login.classList.remove('hidden');
         if (lobby) lobby.classList.add('hidden');
@@ -65,7 +64,6 @@ async function saveUserStatus(user, isOnline) {
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-        // Raha sambany vao miditra amin'ity Email ity
         await setDoc(userRef, {
             name: user.displayName,
             avatar: user.photoURL,
@@ -75,21 +73,19 @@ async function saveUserStatus(user, isOnline) {
             lastSeen: serverTimestamp()
         });
     } else {
-        // Raha efa nisy ilay kaonty dia havaozina fotsiny ny sata (status)
         await updateDoc(userRef, {
             online: isOnline,
             lastSeen: serverTimestamp(),
-            // Ampio ireto raha sanatria nanova sary na anarana tany amin'ny Google izy
             name: user.displayName,
             avatar: user.photoURL
         });
     }
 }
+
 // ================= PROFILE =================
 function updateUIProfile(user) {
     const avatar = document.getElementById('user-avatar');
     const name = document.getElementById('user-name');
-
     if (avatar) avatar.src = user.photoURL;
     if (name) name.innerText = user.displayName;
 }
@@ -112,20 +108,15 @@ if (btnQuick) {
             window.joinRoom(found);
         } else {
             const uid = "ROOM-" + Math.floor(Math.random() * 9999);
-
             await setDoc(doc(db, "rooms", uid), {
                 roomUID: uid,
-                creator: {
-                    id: auth.currentUser.uid,
-                    name: auth.currentUser.displayName
-                },
+                creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
                 opponent: null,
                 status: "waiting",
                 turn: auth.currentUser.uid,
                 board: initFanoronaBoard(),
                 createdAt: serverTimestamp()
             });
-
             myRole = "creator";
             enterGameView(uid);
         }
@@ -134,181 +125,175 @@ if (btnQuick) {
 
 // ================= LOBBY =================
 function initLobby() {
-
-    // ROOMS
+    // ROOMS LIST
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const div = document.getElementById('rooms-list-dynamic');
         if (!div) return;
-
         div.innerHTML = "";
-
         snapshot.forEach(docu => {
             const r = docu.data();
-
             if (r.status !== "finished") {
                 const card = document.createElement('div');
-                card.className = "room-card glass animate-pop";
-
+                card.className = "room-item animate-pop";
                 card.innerHTML = `
-                    <div><b>🏠 ${docu.id}</b></div>
-                    <button class="btn-join" data-id="${docu.id}">Hiditra</button>
+                    <span>🏠 Room: ${docu.id}</span>
+                    <button class="btn-side" style="width:auto" onclick="joinRoom('${docu.id}')">Hiditra</button>
                 `;
-
                 div.appendChild(card);
             }
         });
+    });
 
-        document.querySelectorAll('#rooms-list-dynamic [data-id]')
-        .forEach(btn => {
-            btn.onclick = () => window.joinRoom(btn.dataset.id);
+    // PLAYERS LIST
+    onSnapshot(collection(db, "users"), (snapshot) => {
+        const div = document.getElementById('players-list-dynamic');
+        if (!div) return;
+        div.innerHTML = "";
+        snapshot.forEach(pDoc => {
+            const p = pDoc.data();
+            if (p.online && pDoc.id !== auth.currentUser.uid) { 
+                const pItem = document.createElement('div');
+                pItem.className = "player-item animate-pop";
+                pItem.dataset.id = pDoc.id;
+                pItem.dataset.name = p.name;
+                pItem.innerHTML = `
+                    <img src="${p.avatar}" style="width:30px; border-radius:50%">
+                    <span>${p.name}</span>
+                `;
+                div.appendChild(pItem);
+            }
         });
+        initPlayerClick();
     });
+}
 
-    // PLAYERS
-  // Mitady an'ity ao anatin'ny initLobby()
-onSnapshot(collection(db, "users"), (snapshot) => {
-    const div = document.getElementById('players-list-dynamic');
-    if (!div) return;
-    div.innerHTML = "";
+// ================= MODAL CREATE ROOM =================
+const modalCreate = document.getElementById('modal-create');
+const btnOpenCreate = document.getElementById('btn-create-room');
+const btnConfirmCreate = document.getElementById('btn-confirm-create');
+const roomUidInput = document.getElementById('room-uid-input');
+const closeModal = document.querySelector('.close-modal');
 
-    snapshot.forEach(pDoc => {
-        const p = pDoc.data();
+if (btnOpenCreate) {
+    btnOpenCreate.onclick = () => modalCreate.classList.remove('hidden');
+}
+if (closeModal) {
+    closeModal.onclick = () => modalCreate.classList.add('hidden');
+}
+
+if (btnConfirmCreate) {
+    btnConfirmCreate.onclick = async () => {
+        const customId = roomUidInput.value.trim();
+        if (!customId) return alert("Ampidiro ny UID!");
         
-        // SIVANA: Aza aseho ao amin'ny lisitra ny tenako (auth.currentUser.uid)
-        if (p.online && pDoc.id !== auth.currentUser.uid) { 
-            div.innerHTML += `
-            <div class="player-item glass animate-pop"
-                 data-id="${pDoc.id}"
-                 data-name="${p.name}">
-                <img src="${p.avatar}" class="small-avatar">
-                <span>${p.name}</span>
-            </div>`;
-        }
-    });
-    initPlayerClick();
-});
+        await setDoc(doc(db, "rooms", customId), {
+            roomUID: customId,
+            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+            opponent: null,
+            status: "waiting",
+            turn: auth.currentUser.uid,
+            board: initFanoronaBoard(),
+            createdAt: serverTimestamp()
+        });
+        myRole = "creator";
+        modalCreate.classList.add('hidden');
+        enterGameView(customId);
+    };
+}
 
-// ================= PLAYER CLICK =================
+// ================= PLAYER CLICK & CONTEXT MENU =================
 function initPlayerClick() {
     document.querySelectorAll('.player-item').forEach(el => {
         el.onclick = (e) => {
-            mpilalaoVoafidy = {
-                id: el.dataset.id,
-                name: el.dataset.name
-            };
-
+            mpilalaoVoafidy = { id: el.dataset.id, name: el.dataset.name };
             const menu = document.getElementById('player-menu');
-            if (!menu) return;
-
-            menu.style.top = e.clientY + "px";
-            menu.style.left = e.clientX + "px";
-            menu.classList.remove('hidden');
+            if (menu) {
+                menu.style.top = e.clientY + "px";
+                menu.style.left = e.clientX + "px";
+                menu.classList.remove('hidden');
+            }
         };
     });
 }
 
-// ================= MENU =================
+// Hanidy an'ilay menu rehefa mikitika toerana hafa
+window.addEventListener('click', (e) => {
+    const menu = document.getElementById('player-menu');
+    if (menu && !e.target.closest('.player-item')) menu.classList.add('hidden');
+});
+
+// ================= CHAT LOGIC =================
 const btnChatUser = document.getElementById('btn-chat-user');
 if (btnChatUser) {
     btnChatUser.onclick = () => {
         if (!mpilalaoVoafidy) return;
-
         chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
         openChat();
     };
 }
 
+function openChat() {
+    if (unsubChat) unsubChat();
+    const panel = document.getElementById('chat-panel');
+    const box = document.getElementById('chat-messages');
+    const chatName = document.getElementById('chat-name');
+
+    if (panel) panel.classList.remove('hidden');
+    if (chatName) chatName.innerText = mpilalaoVoafidy.name;
+
+    const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
+    unsubChat = onSnapshot(q, (snapshot) => {
+        if (box) {
+            box.innerHTML = "";
+            snapshot.forEach(docu => {
+                const m = docu.data();
+                const msgDiv = document.createElement('div');
+                msgDiv.className = m.sender === auth.currentUser.uid ? "msg me" : "msg other";
+                msgDiv.innerText = m.text;
+                box.appendChild(msgDiv);
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+    });
+}
+
 const btnCloseChat = document.getElementById('close-chat');
 if (btnCloseChat) {
     btnCloseChat.onclick = () => {
-        const panel = document.getElementById('chat-panel');
-        if (panel) panel.classList.add('hidden');
-
+        document.getElementById('chat-panel').classList.add('hidden');
         if (unsubChat) unsubChat();
     };
 }
 
-// ================= CHAT =================
-function openChat() {
-
-    if (unsubChat) unsubChat();
-
-    const panel = document.getElementById('chat-panel');
-    const box = document.getElementById('chat-messages');
-
-    if (!panel || !box) return;
-
-    panel.classList.remove('hidden');
-    box.innerHTML = "";
-
-    const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
-
-    unsubChat = onSnapshot(q, (snapshot) => {
-        box.innerHTML = "";
-
-        snapshot.forEach(docu => {
-            const m = docu.data();
-
-            const div = document.createElement('div');
-            div.innerText = m.text;
-            box.appendChild(div);
-
-            const now = Date.now();
-            if (m.time?.seconds && (now - m.time.seconds * 1000 > 86400000)) {
-                deleteDoc(doc(db, "chats", chatId, "messages", docu.id));
-            }
-        });
-
-        box.scrollTop = box.scrollHeight;
-    });
-}
-
-// SEND CHAT
 const btnSend = document.getElementById('send-chat');
 if (btnSend) {
     btnSend.onclick = async () => {
-        if (!chatId) return;
-
         const input = document.getElementById('chat-text');
-        if (!input || !input.value.trim()) return;
-
+        if (!chatId || !input || !input.value.trim()) return;
         await addDoc(collection(db, "chats", chatId, "messages"), {
             text: input.value,
             sender: auth.currentUser.uid,
             time: serverTimestamp()
         });
-
         input.value = "";
     };
 }
 
-// ================= ROOM =================
+// ================= GAME LOGIC =================
 window.joinRoom = async (roomId) => {
     const ref = doc(db, "rooms", roomId);
-    const snap = await getDoc(ref);
-    const room = snap.data();
-
-    if (!room) return alert("Room tsy misy");
-
     await updateDoc(ref, {
-        opponent: {
-            id: auth.currentUser.uid,
-            name: auth.currentUser.displayName
-        },
+        opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
         status: "playing"
     });
-
     myRole = 'opponent';
     enterGameView(roomId);
 };
 
-// ================= GAME =================
 function enterGameView(roomId) {
     currentRoomId = roomId;
-
     const lobby = document.getElementById('lobby-screen');
     const game = document.getElementById('game-screen');
-
     if (lobby) lobby.classList.add('hidden');
     if (game) game.classList.remove('hidden');
 
@@ -318,7 +303,6 @@ function enterGameView(roomId) {
     });
 }
 
-// ================= FANORONA =================
 function initFanoronaBoard() {
     return Array(5).fill().map(() => Array(9).fill(0));
 }
@@ -326,20 +310,16 @@ function initFanoronaBoard() {
 function renderGameBoard(game) {
     const grid = document.getElementById('fanorona-grid');
     if (!grid) return;
-
     grid.innerHTML = "";
-
     game.board.forEach(row => {
         row.forEach(cell => {
             const div = document.createElement('div');
             div.className = "grid-spot";
-
             if (cell !== 0) {
                 const stone = document.createElement('div');
                 stone.className = `stone ${cell === 1 ? 'black' : 'white'}`;
                 div.appendChild(stone);
             }
-
             grid.appendChild(div);
         });
     });
