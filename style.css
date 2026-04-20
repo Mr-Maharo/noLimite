@@ -1,47 +1,23 @@
-/* --- VARIABLES --- */
-:root {
-    --bg-dark: #0f0c29;
-    --aura-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-    --neon-rose: #ff007f;
-    --neon-violet: #9d50bb;
-    --neon-blue: #00d2ff;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.15);
-}
-
 body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
-    background: var(--aura-gradient);
-    background-size: 400% 400%;
-    animation: auraMove 15s ease infinite; /* Animation aura mihetsika */
+    background: #1e1e2f;
     color: white;
-    overflow-x: hidden;
-    min-height: 100vh;
+
+    /* ❗ FIX */
+    overflow: auto;
 }
 
-@keyframes auraMove {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* --- GLASS EFFECT --- */
-.glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 
-                inset 0 0 15px rgba(255, 255, 255, 0.05);
-}
-
-/* --- SCREENS --- */
+/* Screens */
 .screen {
     width: 100%;
     height: 100vh;
     display: flex;
-    flex-direction: column;
+}
+
+/* Hidden system */
+.hidden {
+    display: none !important;
 }
 
 .flex-center {
@@ -49,114 +25,45 @@ body {
     align-items: center;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* --- AUTH CARD --- */
-.auth-card {
-    padding: 50px;
-    text-align: center;
-    border: 1px solid rgba(255, 0, 127, 0.3);
-}
-
-.logo {
-    font-size: 3.5rem;
-    font-weight: 900;
-    letter-spacing: 5px;
-    background: linear-gradient(to right, var(--neon-rose), var(--neon-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 10px rgba(255, 0, 127, 0.5));
-}
-
-/* --- BUTTONS --- */
+/* Buttons */
 button {
-    background: linear-gradient(45deg, var(--neon-rose), var(--neon-violet));
-    color: white;
-    border: none;
-    padding: 15px 35px;
-    border-radius: 50px;
-    font-weight: 700;
-    text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 15px rgba(157, 80, 187, 0.4);
+    padding: 10px 20px;
+    border: none;
 }
 
-button:hover {
-    transform: scale(1.05) translateY(-3px);
-    box-shadow: 0 0 25px var(--neon-rose);
-}
-
-/* --- GRID SYSTEM --- */
+/* Grid */
 #fanorona-grid {
     display: grid;
-    grid-template-columns: repeat(9, 55px);
-    grid-template-rows: repeat(5, 55px);
-    gap: 15px;
-    padding: 25px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 15px;
-    border: 1px solid var(--neon-blue);
-    box-shadow: 0 0 40px rgba(0, 210, 255, 0.2);
+    grid-template-columns: repeat(9, 60px);
+    gap: 5px;
 }
 
-.grid-spot {
-    width: 55px;
-    height: 55px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    display: flex;
+/* --- ✅ MODAL FIX --- */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    display: flex; /* ❗ tsy display:none intsony */
     justify-content: center;
     align-items: center;
-    transition: background 0.3s;
+
+    background: rgba(0,0,0,0.7);
+    z-index: 999;
 }
 
-.grid-spot:hover {
-    background: rgba(0, 210, 255, 0.1);
-}
-
-/* --- STONES --- */
-.stone {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.stone.black {
-    background: radial-gradient(circle at 30% 30%, #ff007f, #4a0026);
-    box-shadow: 0 0 15px var(--neon-rose);
-}
-
-.stone.white {
-    background: radial-gradient(circle at 30% 30%, #00d2ff, #00334d);
-    box-shadow: 0 0 15px var(--neon-blue);
-}
-
-.stone.selected {
-    transform: scale(1.3);
-    border: 2px solid white;
-    filter: brightness(1.5) contrast(1.2);
-}
-
-/* --- MODAL --- */
+/* content */
 .modal-content {
-    background: rgba(15, 12, 41, 0.95);
-    border: 2px solid var(--neon-violet);
-    box-shadow: 0 0 50px rgba(157, 80, 187, 0.5);
-    color: white;
-    padding: 40px;
+    background: #2c2c3a;
+    padding: 20px;
+    border-radius: 10px;
 }
 
-input[type="text"] {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--neon-blue);
-    padding: 12px;
-    color: white;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    width: 100%;
-    outline: none;
+/* close btn */
+.close-modal {
+    cursor: pointer;
 }
