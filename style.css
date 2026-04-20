@@ -1,99 +1,162 @@
-/* --- BASE & VARIABLES --- */
+/* --- VARIABLES --- */
 :root {
-    --primary: #e67e22;
-    --dark: #1a1a2e;
-    --glass-bg: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --anime-shadow: 0 0 20px rgba(230, 126, 34, 0.5);
+    --bg-dark: #0f0c29;
+    --aura-gradient: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    --neon-rose: #ff007f;
+    --neon-violet: #9d50bb;
+    --neon-blue: #00d2ff;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.15);
 }
 
-* { box-sizing: border-box; transition: 0.3s; }
 body {
-    margin: 0; font-family: 'Poppins', sans-serif;
-    background: linear-gradient(45deg, #0f0c29, #302b63, #24243e);
-    height: 100vh; color: white; overflow: hidden;
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: var(--aura-gradient);
+    background-size: 400% 400%;
+    animation: auraMove 15s ease infinite; /* Animation aura mihetsika */
+    color: white;
+    overflow-x: hidden;
+    min-height: 100vh;
 }
 
-.screen { height: 100vh; width: 100%; display: flex; }
-.hidden { display: none !important; }
-.flex-center { justify-content: center; align-items: center; }
+@keyframes auraMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 
-/* --- GLASSMORPHISM --- */
+/* --- GLASS EFFECT --- */
 .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(15px);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 
+                inset 0 0 15px rgba(255, 255, 255, 0.05);
 }
 
-/* --- LOGO & LOGIN --- */
+/* --- SCREENS --- */
+.screen {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-center {
+    justify-content: center;
+    align-items: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- AUTH CARD --- */
+.auth-card {
+    padding: 50px;
+    text-align: center;
+    border: 1px solid rgba(255, 0, 127, 0.3);
+}
+
 .logo {
-    font-size: 4rem; font-weight: 900; letter-spacing: 10px;
-    background: linear-gradient(to bottom, #fff, #e67e22);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(var(--anime-shadow));
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 5px;
+    background: linear-gradient(to right, var(--neon-rose), var(--neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(255, 0, 127, 0.5));
 }
 
-.btn-anime-google {
-    background: white; color: #333; border: none; padding: 15px 30px;
-    border-radius: 50px; font-weight: bold; cursor: pointer;
-    display: flex; align-items: center; gap: 10px; font-size: 1.1rem;
+/* --- BUTTONS --- */
+button {
+    background: linear-gradient(45deg, var(--neon-rose), var(--neon-violet));
+    color: white;
+    border: none;
+    padding: 15px 35px;
+    border-radius: 50px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(157, 80, 187, 0.4);
 }
 
-/* --- LOBBY LAYOUT --- */
-.sidebar { width: 280px; padding: 30px; display: flex; flex-direction: column; gap: 40px; }
-.avatar-glow {
-    width: 120px; height: 120px; border-radius: 50%;
-    padding: 5px; background: var(--primary); box-shadow: var(--anime-shadow);
+button:hover {
+    transform: scale(1.05) translateY(-3px);
+    box-shadow: 0 0 25px var(--neon-rose);
 }
-.avatar-glow img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-.main-content { flex-grow: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-.top-bar { height: 70px; display: flex; align-items: center; padding: 0 30px; justify-content: flex-end; }
-
-.dashboard { flex-grow: 1; overflow-y: auto; padding: 10px; }
-.lists-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-.scroll-area { height: 400px; overflow-y: auto; padding: 10px; }
-
-/* --- FANORONA GRID (5x9) --- */
-.fanorona-grid {
+/* --- GRID SYSTEM --- */
+#fanorona-grid {
     display: grid;
-    grid-template-columns: repeat(9, 60px);
-    grid-template-rows: repeat(5, 60px);
-    gap: 10px;
-    background: rgba(255,255,255,0.05);
-    padding: 20px; border-radius: 10px;
-    position: relative;
-    border: 2px solid var(--primary);
+    grid-template-columns: repeat(9, 55px);
+    grid-template-rows: repeat(5, 55px);
+    gap: 15px;
+    padding: 25px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    border: 1px solid var(--neon-blue);
+    box-shadow: 0 0 40px rgba(0, 210, 255, 0.2);
 }
 
 .grid-spot {
-    width: 60px; height: 60px;
-    display: flex; justify-content: center; align-items: center;
-    cursor: pointer; position: relative;
+    width: 55px;
+    height: 55px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s;
 }
 
-/* Ny vato (Stones) */
+.grid-spot:hover {
+    background: rgba(0, 210, 255, 0.1);
+}
+
+/* --- STONES --- */
 .stone {
-    width: 45px; height: 45px; border-radius: 50%;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    z-index: 2;
-}
-.stone.black { background: radial-gradient(circle at 30% 30%, #555, #000); }
-.stone.white { background: radial-gradient(circle at 30% 30%, #fff, #aaa); }
-.stone.selected { 
-    transform: scale(1.3); border: 3px solid var(--primary); 
-    box-shadow: var(--anime-shadow); 
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* --- ANIMATIONS --- */
-@keyframes popIn {
-    from { opacity: 0; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1); }
+.stone.black {
+    background: radial-gradient(circle at 30% 30%, #ff007f, #4a0026);
+    box-shadow: 0 0 15px var(--neon-rose);
 }
-.animate-pop { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+.stone.white {
+    background: radial-gradient(circle at 30% 30%, #00d2ff, #00334d);
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+.stone.selected {
+    transform: scale(1.3);
+    border: 2px solid white;
+    filter: brightness(1.5) contrast(1.2);
+}
 
 /* --- MODAL --- */
-.modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
-.modal-content { width: 400px; margin: 10% auto; padding: 30px; text-align: center; }
-.glass-dark { background: rgba(20, 20, 40, 0.95); border: 1px solid var(--primary); }
+.modal-content {
+    background: rgba(15, 12, 41, 0.95);
+    border: 2px solid var(--neon-violet);
+    box-shadow: 0 0 50px rgba(157, 80, 187, 0.5);
+    color: white;
+    padding: 40px;
+}
+
+input[type="text"] {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--neon-blue);
+    padding: 12px;
+    color: white;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+    outline: none;
+}
