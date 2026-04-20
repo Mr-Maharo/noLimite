@@ -25,22 +25,35 @@ let selectedStone = null;
 
 // --- 2. AUTHENTICATION & REDIRECT RESULT ---
 
-// Mihaino ny valin'ny fidirana avy amin'ny Redirect
-getRedirectResult(auth).catch((error) => console.error("Login Error:", error));
+getRedirectResult(auth)
+.then((result) => {
+    if (result && result.user) {
+        console.log("✅ Redirect OK:", result.user);
+    }
+})
+.catch((error) => console.error("❌ Login Error:", error));
 
 onAuthStateChanged(auth, (user) => {
+    console.log("USER:", user);
+
     const loginScreen = document.getElementById('login-screen');
     const lobbyScreen = document.getElementById('lobby-screen');
 
     if (user) {
-        loginScreen.classList.add('hidden');
-        lobbyScreen.classList.remove('hidden');
+        console.log("✅ MIDITRA");
+
+        if (loginScreen) loginScreen.classList.add('hidden');
+        if (lobbyScreen) lobbyScreen.classList.remove('hidden');
+
         updateUIProfile(user);
         initLobby();
         saveUserStatus(user, true);
+
     } else {
-        loginScreen.classList.remove('hidden');
-        lobbyScreen.classList.add('hidden');
+        console.log("❌ TSY MIDITRA");
+
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        if (lobbyScreen) lobbyScreen.classList.add('hidden');
     }
 });
 
@@ -57,14 +70,20 @@ const loginWithGoogle = () => {
     signInWithRedirect(auth, provider);
 };
 
-document.getElementById('btn-google').addEventListener('click', loginWithGoogle);
+const btnGoogle = document.getElementById('btn-google');
+if (btnGoogle) {
+    btnGoogle.addEventListener('click', loginWithGoogle);
+}
 
 // --- 3. LOBBY LOGIC ---
 
 function initLobby() {
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const roomsDiv = document.getElementById('rooms-list-dynamic');
+        if (!roomsDiv) return;
+
         roomsDiv.innerHTML = "";
+
         snapshot.forEach(roomDoc => {
             const room = roomDoc.data();
             if (room.status !== "finished") {
@@ -81,7 +100,6 @@ function initLobby() {
             }
         });
 
-        // Ampifandraisina ny click amin'ny bokotra Join rehetra
         document.querySelectorAll('.btn-join').forEach(btn => {
             btn.onclick = () => window.joinRoom(btn.getAttribute('data-id'));
         });
@@ -89,7 +107,10 @@ function initLobby() {
 
     onSnapshot(collection(db, "users"), (snapshot) => {
         const playersDiv = document.getElementById('players-list-dynamic');
+        if (!playersDiv) return;
+
         playersDiv.innerHTML = "";
+
         snapshot.forEach(pDoc => {
             const p = pDoc.data();
             if (p.online) {
@@ -103,7 +124,7 @@ function initLobby() {
     });
 }
 
-// --- 4. FANORONA ENGINE (Logic tsy miova) ---
+// --- 4. FANORONA ENGINE ---
 
 function initFanoronaBoard() {
     let board = Array(5).fill().map(() => Array(9).fill(0));
@@ -136,56 +157,63 @@ function executeMove(r1, c1, r2, c2, board, player) {
     let newBoard = JSON.parse(JSON.stringify(board));
     newBoard[r2][c2] = player;
     newBoard[r1][c1] = 0;
+
     const dr = r2 - r1;
     const dc = c2 - c1;
     const enemy = (player === 1) ? 2 : 1;
 
-    // Approach
-    let nextR = r2 + dr; let nextC = c2 + dc;
+    let nextR = r2 + dr, nextC = c2 + dc;
     while (nextR >= 0 && nextR < 5 && nextC >= 0 && nextC < 9 && newBoard[nextR][nextC] === enemy) {
         newBoard[nextR][nextC] = 0;
         nextR += dr; nextC += dc;
     }
-    // Withdrawal
-    let backR = r1 - dr; let backC = c1 - dc;
+
+    let backR = r1 - dr, backC = c1 - dc;
     while (backR >= 0 && backR < 5 && backC >= 0 && backC < 9 && newBoard[backR][backC] === enemy) {
         newBoard[backR][backC] = 0;
         backR -= dr; backC -= dc;
     }
+
     return newBoard;
 }
 
 // --- 5. GAME ACTIONS ---
 
-document.getElementById('btn-confirm-create').onclick = async () => {
-    const uid = document.getElementById('room-uid-input').value.trim();
-    const tours = document.getElementById('room-tours-select').value;
-    const isPrive = document.getElementById('check-prive').checked;
-    const pass = document.getElementById('room-pass-input').value;
+const btnCreate = document.getElementById('btn-confirm-create');
+if (btnCreate) {
+    btnCreate.onclick = async () => {
+        const uid = document.getElementById('room-uid-input').value.trim();
+        const tours = document.getElementById('room-tours-select').value;
+        const isPrive = document.getElementById('check-prive').checked;
+        const pass = document.getElementById('room-pass-input').value;
 
-    if (!uid) return alert("UID ilaina!");
+        if (!uid) return alert("UID ilaina!");
 
-    await setDoc(doc(db, "rooms", uid), {
-        roomUID: uid,
-        maxTours: parseInt(tours),
-        prive: isPrive,
-        password: isPrive ? pass : null,
-        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL },
-        opponent: null,
-        status: "waiting",
-        turn: auth.currentUser.uid,
-        board: initFanoronaBoard(),
-        createdAt: serverTimestamp()
-    });
-    myRole = 'creator';
-    enterGameView(uid);
-};
+        await setDoc(doc(db, "rooms", uid), {
+            roomUID: uid,
+            maxTours: parseInt(tours),
+            prive: isPrive,
+            password: isPrive ? pass : null,
+            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL },
+            opponent: null,
+            status: "waiting",
+            turn: auth.currentUser.uid,
+            board: initFanoronaBoard(),
+            createdAt: serverTimestamp()
+        });
 
-// Natao "window." mba hitan'ny HTML
+        myRole = 'creator';
+        enterGameView(uid);
+    };
+}
+
+// --- JOIN ROOM ---
 window.joinRoom = async (roomId) => {
     const roomRef = doc(db, "rooms", roomId);
     const snap = await getDoc(roomRef);
     const room = snap.data();
+
+    if (!room) return alert("Room tsy misy");
 
     if (room.prive) {
         const p = prompt("Teny miafina:");
@@ -205,17 +233,23 @@ window.joinRoom = async (roomId) => {
 
 function enterGameView(roomId) {
     currentRoomId = roomId;
-    document.getElementById('lobby-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden');
+
+    const lobby = document.getElementById('lobby-screen');
+    const game = document.getElementById('game-screen');
+
+    if (lobby) lobby.classList.add('hidden');
+    if (game) game.classList.remove('hidden');
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
-        const game = snap.data();
-        if (game) renderGameBoard(game);
+        const data = snap.data();
+        if (data) renderGameBoard(data);
     });
 }
 
 function renderGameBoard(game) {
     const grid = document.getElementById('fanorona-grid');
+    if (!grid) return;
+
     grid.innerHTML = "";
     const myNum = (myRole === 'creator') ? 1 : 2;
 
@@ -223,11 +257,13 @@ function renderGameBoard(game) {
         row.forEach((cell, c) => {
             const spot = document.createElement('div');
             spot.className = "grid-spot";
-            
+
             if (cell !== 0) {
                 const stone = document.createElement('div');
-                stone.className = `stone ${cell === 1 ? 'black' : 'white'} animate-pop`;
-                if (selectedStone?.r === r && selectedStone?.c === c) stone.classList.add('selected');
+                stone.className = `stone ${cell === 1 ? 'black' : 'white'}`;
+                if (selectedStone?.r === r && selectedStone?.c === c) {
+                    stone.classList.add('selected');
+                }
                 spot.appendChild(stone);
             }
 
@@ -240,26 +276,30 @@ function renderGameBoard(game) {
                 } else if (selectedStone && cell === 0) {
                     if (isValidMove(selectedStone.r, selectedStone.c, r, c, game.board)) {
                         const newBoard = executeMove(selectedStone.r, selectedStone.c, r, c, game.board, myNum);
-                        
-                        // Fikajiana ny turn manaraka
+
                         const nextTurn = (myRole === 'creator') 
                             ? (game.opponent ? game.opponent.id : game.turn) 
                             : game.creator.id;
-                        
+
                         await updateDoc(doc(db, "rooms", currentRoomId), {
                             board: newBoard,
                             turn: nextTurn
                         });
+
                         selectedStone = null;
                     }
                 }
             };
+
             grid.appendChild(spot);
         });
     });
 }
 
 function updateUIProfile(user) {
-    document.getElementById('user-avatar').src = user.photoURL;
-    document.getElementById('user-name').innerText = user.displayName;
+    const avatar = document.getElementById('user-avatar');
+    const name = document.getElementById('user-name');
+
+    if (avatar) avatar.src = user.photoURL;
+    if (name) name.innerText = user.displayName;
 }
