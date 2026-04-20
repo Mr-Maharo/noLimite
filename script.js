@@ -155,7 +155,26 @@ function initLobby() {
             }
         });
     });
+// ================= PLAYER CLICK =================
+function initPlayerClick() {
+    document.querySelectorAll('.player-item').forEach(el => {
+        el.onclick = (e) => {
 
+            mpilalaoVoafidy = {
+                id: el.dataset.id,
+                name: el.dataset.name
+            };
+
+            const menu = document.getElementById('player-menu');
+
+            if (menu) {
+                menu.style.top = e.clientY + "px";
+                menu.style.left = e.clientX + "px";
+                menu.classList.remove('hidden');
+            }
+        };
+    });
+}
     onSnapshot(collection(db, "users"), (snapshot) => {
         const div = document.getElementById('players-list-dynamic');
         div.innerHTML = "";
