@@ -246,7 +246,123 @@ function initFanoronaBoard() {
     }
     return board;
 }
+// ===============================
+// CHAT SYSTEM
+// ===============================
 
+let mpilalaoVoafidy = null;
+let chatId = null;
+let unsubChat = null;
+
+// CLICK PLAYER
+function initPlayerClick() {
+    document.querySelectorAll('.player-item').forEach(el => {
+        el.onclick = (e) => {
+
+            mpilalaoVoafidy = {
+                id: el.dataset.id,
+                name: el.dataset.name
+            };
+
+            const menu = document.getElementById('player-menu');
+
+            menu.style.top = e.clientY + "px";
+            menu.style.left = e.clientX + "px";
+
+            menu.classList.remove('hidden');
+        };
+    });
+}
+
+// OPEN CHAT
+document.getElementById('btn-open-chat')?.addEventListener('click', () => {
+
+    if (!mpilalaoVoafidy) return;
+
+    const ahy = auth.currentUser.uid;
+
+    chatId = [ahy, mpilalaoVoafidy.id].sort().join("_");
+
+    document.getElementById('chat-username').innerText = mpilalaoVoafidy.name;
+
+    document.getElementById('chat-panel').classList.remove('hidden');
+    document.getElementById('player-menu').classList.add('hidden');
+
+    startChat();
+});
+
+// LOAD CHAT
+function startChat() {
+
+    if (unsubChat) unsubChat();
+
+    const q = query(
+        collection(db, "chats", chatId, "messages"),
+        orderBy("createdAt")
+    );
+
+    unsubChat = onSnapshot(q, async (snap) => {
+
+        const box = document.getElementById('chat-messages');
+        box.innerHTML = "";
+
+        const now = Date.now();
+
+        for (const d of snap.docs) {
+            const m = d.data();
+
+            // delete 24h
+            if (now - m.createdAt > 86400000) {
+                await deleteDoc(d.ref);
+                continue;
+            }
+
+            box.innerHTML += `
+            <div class="msg ${m.sender === auth.currentUser.uid ? 'me' : 'other'}">
+                ${m.text}
+            </div>`;
+        }
+
+        box.scrollTop = box.scrollHeight;
+    });
+}
+
+// SEND
+document.getElementById('send-chat')?.addEventListener('click', async () => {
+
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+
+    if (!text || !chatId) return;
+
+    await addDoc(collection(db, "chats", chatId, "messages"), {
+        text,
+        sender: auth.currentUser.uid,
+        createdAt: Date.now()
+    });
+
+    input.value = "";
+});
+
+// CLOSE CHAT
+document.getElementById('close-chat')?.onclick = () => {
+    document.getElementById('chat-panel').classList.add('hidden');
+
+    if (unsubChat) {
+        unsubChat();
+        unsubChat = null;
+    }
+};
+
+// CLOSE MENU
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('player-menu');
+    if (!menu) return;
+
+    if (!menu.contains(e.target) && !e.target.classList.contains('player-item')) {
+        menu.classList.add('hidden');
+    }
+});
 function renderGameBoard(game) {
     const grid = document.getElementById('fanorona-grid');
     if (!grid) return;
