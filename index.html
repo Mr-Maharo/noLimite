@@ -1,116 +1,47 @@
 <!DOCTYPE html>
 <html lang="mg">
-  <head>
-    <title>Fanorona Online - Lalao Malagasy mavesatra</title>
-    
-    <meta name="description" content="Milalaova Fanorona Online miaraka amin'ny namana. Lalao nentim-paharazana Malagasy amin'ny fomba vaovao sy style Rose/Violet.">
-    
-    <meta name="keywords" content="Fanorona, Lalao Malagasy, Madagascar Game, Fanorona Online, Board Game Madagascar">
-    
-    <meta property="og:title" content="Fanorona Online - NoLimite">
-    <meta property="og:description" content="Andao hifandona amin'ny Fanorona!">
-    <meta property="og:image" content="rohy_mankany_amin'ny_sary_nao.jpg">
-      
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fanorona Online</title>
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
-    <section id="login-screen" class="screen flex-center">
-        <div class="auth-card glass animate-pop">
-            <h1 class="logo">FANORONA</h1>
-            <p>Ny hery tsy hita maso no mitarika ny vato.</p>
-            <button id="btn-google" class="btn-anime-google">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
-                Midira amin'ny Google
-            </button>
-        </div>
-    </section>
-
-    <section id="lobby-screen" class="screen hidden">
-        <aside class="sidebar glass">
-            <div class="profile">
-                <div class="avatar-glow">
-                    <img id="user-avatar" src="" alt="Avatar">
-                </div>
-                <h3 id="user-name">Mpilalao</h3>
-            </div>
-            <nav>
-                <button class="btn-side">⚙️ Paramètre</button>
-                <button id="btn-logout" class="btn-side danger">🚪 Hivoaka</button>
-            </nav>
-        </aside>
-
-        <main class="main-content">
-            <header class="top-bar glass">
-                <div class="search-box">
-                    <input type="text" id="search-player" placeholder="🔍 Hitady mpilalao...">
-                    <input type="text" id="search-room" placeholder="🏠 Hitady Room (UID)...">
-                </div>
-            </header>
-
-            <div class="dashboard">
-                <div class="actions">
-                    <button id="btn-create-room" class="btn-action primary">➕ Hamorona Efitra</button>
-                    <button id="btn-quick-play" class="btn-action secondary">⚡ Jouer Rapidement</button>
-                </div>
-
-                <div class="lists-grid">
-                    <div class="list-card glass">
-                        <h3>🏠 Efitra azo idirana</h3>
-                        <div id="rooms-list-dynamic" class="scroll-area"></div>
-                    </div>
-                    <div class="list-card glass">
-                        <h3>👥 Mpilalao Online</h3>
-                        <div id="players-list-dynamic" class="scroll-area"></div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </section>
-
-    <section id="game-screen" class="screen hidden flex-center">
-        <div class="game-container glass animate-pop">
-            <div class="game-header">
-                <div class="player-tag p1">Mainty</div>
-                <div id="game-status" class="status-msg">Anjaranao ny mamindra</div>
-                <div class="player-tag p2">Fotsy</div>
-            </div>
-
-            <div id="fanorona-grid" class="fanorona-grid">
-                </div>
-
-            <button onclick="location.reload()" class="btn-exit">Hiala amin'ny lalao</button>
-        </div>
-    </section>
-
-    <div id="modal-create" class="modal">
-        <div class="modal-content glass-dark animate-pop">
-            <span class="close-modal">&times;</span>
-            <h2>Efitra Vaovao</h2>
-            <div class="field">
-                <label>UID (Anaran'ny efitra)</label>
-                <input type="text" id="room-uid-input" placeholder="Ohatra: FAN-101">
-            </div>
-            <div class="field">
-                <label>Tours</label>
-                <select id="room-tours-select">
-                    <option value="1">1 Tour</option>
-                    <option value="3" selected>3 Tours</option>
-                    <option value="6">6 Tours</option>
-                </select>
-            </div>
-            <div class="field-inline">
-                <label>Efitra Privé?</label>
-                <input type="checkbox" id="check-prive">
-            </div>
-            <div id="pass-field" class="field hidden">
-                <input type="password" id="room-pass-input" placeholder="Teny miafina...">
-            </div>
-            <button id="btn-confirm-create" class="btn-confirm">HANOMBOKA</button>
-        </div>
+<section id="login-screen" class="screen flex-center">
+    <div class="auth-card glass">
+        <h1 class="logo">FANORONA</h1>
+        <button id="btn-google" class="btn-anime-google">
+            Login Google
+        </button>
     </div>
+</section>
 
-    <script type="module" src="script.js"></script>
+<section id="lobby-screen" class="screen hidden">
+    <button id="btn-create-room">Créer Room</button>
+
+    <div id="rooms-list-dynamic"></div>
+    <div id="players-list-dynamic"></div>
+</section>
+
+<section id="game-screen" class="screen hidden flex-center">
+    <div id="fanorona-grid"></div>
+</section>
+
+<!-- ✅ MODAL VOAHITSY -->
+<div id="modal-create" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-modal">X</span>
+
+        <input type="text" id="room-uid-input" placeholder="UID">
+        <button id="btn-confirm-create">Créer</button>
+    </div>
+</div>
+
+<script type="module" src="script.js"></script>
+
 </body>
 </html>
