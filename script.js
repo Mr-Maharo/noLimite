@@ -1,10 +1,13 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, remove, onDisconnect, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9/firebase-app.js";
+import { 
+    getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
+} from "https://www.gstatic.com/firebasejs/9/firebase-auth.js";
+import { 
+    getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, 
+    query, orderBy, serverTimestamp, arrayUnion, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/9/firebase-firestore.js";
 
-// ==========================================
-// 1. CONFIGURATION & CORE ENGINE
-// ==========================================
+// --- 1. CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
     authDomain: "nolimite-29e0b.firebaseapp.com",
@@ -13,349 +16,236 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 
-// Game Settings
-const MAP_SIZE = 5000;
-const PLAYER_SPEED = 7;
-const BULLET_SPEED = 15;
-let zoneRadius = 2500;
-let isPlaying = false;
-let myId = null;
-let myUsername = "Player";
+// State an'ny lalao
+let currentRoomId = null;
+let myRole = null; // 'creator' (Mainty/1) na 'opponent' (Fotsy/2)
+let selectedStone = null; 
 
-// Data Storage
-let players = {};
-let bullets = {};
-let joystick = { x: 0, y: 0, active: false };
-
-// Player Local State
-let me = {
-    x: Math.random() * 3000 + 1000,
-    y: Math.random() * 3000 + 1000,
-    hp: 100,
-    kills: 0,
-    angle: 0,
-    lastUpdate: 0
-};
-
-// --- VARIABLE HO AN'NY CANVAS ---
-let canvas, ctx;
-
-// ==========================================
-// 2. WAIT FOR DOM LOAD (Mba tsy hisy error null)
-// ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    canvas = document.getElementById("gameCanvas");
-    if (canvas) ctx = canvas.getContext("2d");
-
-    // Login/Signup Events
-    const signupBtn = document.getElementById("signup-btn");
-    if (signupBtn) {
-        signupBtn.onclick = async () => {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            const name = document.getElementById("name").value;
-            if(!name) return alert("Anarana azafady!");
-            try {
-                const res = await createUserWithEmailAndPassword(auth, email, pass);
-                await updateProfile(res.user, { displayName: name });
-                location.reload();
-            } catch (e) { alert(e.message); }
-        };
-    }
-
-    const loginBtn = document.getElementById("login-btn");
-    if (loginBtn) {
-        loginBtn.onclick = () => {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            signInWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
-        };
-    }
-
-    const startBtn = document.getElementById("start-btn");
-    if (startBtn) {
-        startBtn.onclick = () => {
-            document.getElementById("main-hub").style.display = "none";
-            document.getElementById("game-ui").style.display = "block";
-            isPlaying = true;
-            
-            const pRef = ref(db, `players/${myId}`);
-            set(pRef, {
-                x: me.x, y: me.y,
-                hp: 100, kills: 0,
-                name: myUsername,
-                angle: 0
-            });
-            onDisconnect(pRef).remove();
-
-            initJoystick();
-            requestAnimationFrame(gameLoop);
-        };
-    }
-
-    const attackBtn = document.getElementById("btn-attack");
-    if (attackBtn) {
-        attackBtn.onclick = () => {
-            if(!isPlaying) return;
-            const bulletId = push(ref(db, 'bullets')).key;
-            const bData = {
-                owner: myId,
-                x: me.x,
-                y: me.y,
-                vx: Math.cos(me.angle) * BULLET_SPEED,
-                vy: -Math.sin(me.angle) * BULLET_SPEED,
-                t: Date.now()
-            };
-            set(ref(db, `bullets/${bulletId}`), bData);
-            setTimeout(() => { remove(ref(db, `bullets/${bulletId}`)); }, 2000);
-        };
+// --- 2. AUTHENTICATION & USER STATUS ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('lobby-screen').classList.remove('hidden');
+        updateUIProfile(user);
+        initLobby();
+        saveUserStatus(user, true);
+    } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('lobby-screen').classList.add('hidden');
     }
 });
 
-// ==========================================
-// 3. AUTH & SYNC LOGIC
-// ==========================================
+async function saveUserStatus(user, isOnline) {
+    await setDoc(doc(db, "users", user.uid), {
+        name: user.displayName,
+        avatar: user.photoURL,
+        online: isOnline,
+        lastSeen: serverTimestamp()
+    }, { merge: true });
+}
 
-// --- Jereo ity ampahany ity ao amin'ny onAuthStateChanged ---
-onAuthStateChanged(auth, user => {
-    if (user) {
-        myId = user.uid;
-        myUsername = user.displayName || "Survivor";
-        
-        // Mampiseho ny anarana eo amin'ny Top Bar
-        const topUser = document.getElementById("top-username");
-        if (topUser) topUser.innerText = myUsername;
-
-        // Maka ny Statistika avy any amin'ny Database
-        onValue(ref(db, `players/${myId}`), (snap) => {
-            const data = snap.val();
-            if (data) {
-                // Manavao ny isa ao amin'ny pejy Profile (Vault)
-                const profKills = document.getElementById("prof-kills");
-                const profHp = document.getElementById("prof-hp");
-                
-                if (profKills) profKills.innerText = data.kills || 0;
-                if (profHp) profHp.innerText = Math.floor(data.hp || 100);
+// --- 3. LOBBY LOGIC ---
+function initLobby() {
+    // Mihaino ny Rooms rehetra
+    onSnapshot(collection(db, "rooms"), (snapshot) => {
+        const roomsDiv = document.getElementById('rooms-list-dynamic');
+        roomsDiv.innerHTML = "";
+        snapshot.forEach(roomDoc => {
+            const room = roomDoc.data();
+            if (room.status !== "finished") {
+                const card = document.createElement('div');
+                card.className = "room-card glass animate-pop";
+                card.innerHTML = `
+                    <div class="room-info">
+                        <b>🏠 ${roomDoc.id}</b> 
+                        <span>${room.prive ? '🔒' : '🔓'} | Tours: ${room.maxTours}</span>
+                    </div>
+                    <button class="btn-join" onclick="joinRoom('${roomDoc.id}')">Hiditra</button>
+                `;
+                roomsDiv.appendChild(card);
             }
         });
-
-        // Hanafina ny Login sy hampiseho ny Lobby
-        toggleUI("auth-screen", false);
-        toggleUI("main-hub", true);
-        
-        initChat();
-        syncGlobalData();
-    }
-});
-
-window.switchSection = (id) => {
-    const sections = ['home', 'profile', 'messages'];
-    sections.forEach(s => {
-        const el = document.getElementById('sec-' + s);
-        if (el) el.style.display = 'none';
     });
-    const target = document.getElementById('sec-' + id);
-    if (target) target.style.display = 'block';
-    
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+    // Mihaino ny Online Players
+    onSnapshot(collection(db, "users"), (snapshot) => {
+        const playersDiv = document.getElementById('players-list-dynamic');
+        playersDiv.innerHTML = "";
+        snapshot.forEach(pDoc => {
+            const p = pDoc.data();
+            if (p.online) {
+                playersDiv.innerHTML += `
+                    <div class="player-item glass animate-fade">
+                        <img src="${p.avatar}" class="small-avatar">
+                        <span>${p.name}</span>
+                    </div>`;
+            }
+        });
+    });
+}
+
+// --- 4. FANORONA CORE ENGINE (Rules & Logic) ---
+
+function initFanoronaBoard() {
+    let board = Array(5).fill().map(() => Array(9).fill(0));
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 9; j++) {
+            if (i < 2) board[i][j] = 1; 
+            else if (i > 2) board[i][j] = 2;
+            else {
+                if (j < 4) board[i][j] = (j % 2 === 0) ? 1 : 2;
+                else if (j > 4) board[i][j] = (j % 2 === 0) ? 2 : 1;
+                else board[i][j] = 0;
+            }
+        }
+    }
+    return board;
+}
+
+function isStrongPoint(r, c) { return (r + c) % 2 === 0; }
+
+function isValidMove(r1, c1, r2, c2, board) {
+    const dr = Math.abs(r1 - r2);
+    const dc = Math.abs(c1 - c2);
+    if (dr > 1 || dc > 1 || (dr === 0 && dc === 0)) return false;
+    if (board[r2][c2] !== 0) return false;
+    if (dr === 1 && dc === 1 && !isStrongPoint(r1, c1)) return false;
+    return true;
+}
+
+// Algorithm Tika sy Taka
+function executeMove(r1, c1, r2, c2, board, player) {
+    let newBoard = JSON.parse(JSON.stringify(board));
+    newBoard[r2][c2] = player;
+    newBoard[r1][c1] = 0;
+
+    const dr = r2 - r1;
+    const dc = c2 - c1;
+    const enemy = (player === 1) ? 2 : 1;
+
+    // Tika (Approach)
+    let nextR = r2 + dr; let nextC = c2 + dc;
+    while (nextR >= 0 && nextR < 5 && nextC >= 0 && nextC < 9 && newBoard[nextR][nextC] === enemy) {
+        newBoard[nextR][nextC] = 0;
+        nextR += dr; nextC += dc;
+    }
+
+    // Taka (Withdrawal)
+    let backR = r1 - dr; let backC = c1 - dc;
+    while (backR >= 0 && backR < 5 && backC >= 0 && backC < 9 && newBoard[backR][backC] === enemy) {
+        newBoard[backR][backC] = 0;
+        backR -= dr; backC -= dc;
+    }
+    return newBoard;
+}
+
+// --- 5. GAME ACTIONS ---
+
+document.getElementById('btn-confirm-create').onclick = async () => {
+    const uid = document.getElementById('room-uid-input').value.trim();
+    const tours = document.getElementById('room-tours-select').value;
+    const isPrive = document.getElementById('check-prive').checked;
+    const pass = document.getElementById('room-pass-input').value;
+
+    if (!uid) return alert("UID ilaina!");
+
+    const roomData = {
+        roomUID: uid,
+        maxTours: parseInt(tours),
+        prive: isPrive,
+        password: isPrive ? pass : null,
+        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL },
+        opponent: null,
+        status: "waiting",
+        turn: auth.currentUser.uid,
+        board: initFanoronaBoard(),
+        createdAt: serverTimestamp()
+    };
+
+    await setDoc(doc(db, "rooms", uid), roomData);
+    myRole = 'creator';
+    enterGameView(uid);
 };
 
-function syncGlobalData() {
-    onValue(ref(db, 'players'), snap => {
-        players = snap.val() || {};
-        if(players[myId]) {
-            me.hp = players[myId].hp;
-            me.kills = players[myId].kills;
-            
-            const hpBar = document.getElementById("hp-bar");
-            const killVal = document.getElementById("kill-val");
-            const profKills = document.getElementById("prof-kills");
+window.joinRoom = async (roomId) => {
+    const roomRef = doc(db, "rooms", roomId);
+    const snap = await getDoc(roomRef);
+    const room = snap.data();
 
-            if (hpBar) hpBar.style.width = me.hp + "%";
-            if (killVal) killVal.innerText = me.kills;
-            if (profKills) profKills.innerText = me.kills;
-            
-            if(me.hp <= 0 && isPlaying) gameOver();
-        }
+    if (room.prive) {
+        const p = prompt("Teny miafina:");
+        if (p !== room.password) return alert("Diso!");
+    }
+
+    await updateDoc(roomRef, {
+        opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL },
+        status: "playing"
     });
 
-    onValue(ref(db, 'bullets'), snap => {
-        bullets = snap.val() || {};
+    myRole = 'opponent';
+    enterGameView(roomId);
+};
+
+// --- 6. GAMEPLAY SYNC & UI ---
+
+function enterGameView(roomId) {
+    currentRoomId = roomId;
+    document.getElementById('lobby-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden'); // Ataovy azo antoka fa misy ity ID ity
+
+    onSnapshot(doc(db, "rooms", roomId), (snap) => {
+        const game = snap.data();
+        if (!game) return;
+        renderGameBoard(game);
     });
 }
 
-function initChat() {
-    const chatIn = document.getElementById("chat-input");
-    const sendBtn = document.getElementById("send-btn");
+function renderGameBoard(game) {
+    const grid = document.getElementById('fanorona-grid');
+    grid.innerHTML = "";
+    const myNum = (myRole === 'creator') ? 1 : 2;
 
-    if (sendBtn) {
-        sendBtn.onclick = () => {
-            if(!chatIn.value) return;
-            push(ref(db, "chat"), {
-                name: myUsername,
-                msg: chatIn.value,
-                time: serverTimestamp()
-            });
-            chatIn.value = "";
-        };
-    }
+    game.board.forEach((row, r) => {
+        row.forEach((cell, c) => {
+            const spot = document.createElement('div');
+            spot.className = "grid-spot";
+            
+            if (cell !== 0) {
+                const stone = document.createElement('div');
+                stone.className = `stone ${cell === 1 ? 'black' : 'white'} animate-pop`;
+                if (selectedStone?.r === r && selectedStone?.c === c) stone.classList.add('selected');
+                spot.appendChild(stone);
+            }
 
-    onValue(ref(db, "chat"), snap => {
-        const box = document.getElementById("chat-messages");
-        if (!box) return;
-        box.innerHTML = "";
-        const data = snap.val() || {};
-        Object.values(data).slice(-20).forEach(m => {
-            box.innerHTML += `<div class="msg"><b>${m.name}:</b> ${m.msg}</div>`;
+            spot.onclick = async () => {
+                if (game.turn !== auth.currentUser.uid) return;
+
+                if (cell === myNum) {
+                    selectedStone = { r, c };
+                    renderGameBoard(game); // Refresh highlight
+                } else if (selectedStone && cell === 0) {
+                    if (isValidMove(selectedStone.r, selectedStone.c, r, c, game.board)) {
+                        const newBoard = executeMove(selectedStone.r, selectedStone.c, r, c, game.board, myNum);
+                        const nextTurn = (myRole === 'creator') ? game.opponent.id : game.creator.id;
+                        
+                        await updateDoc(doc(db, "rooms", currentRoomId), {
+                            board: newBoard,
+                            turn: nextTurn
+                        });
+                        selectedStone = null;
+                    }
+                }
+            };
+            grid.appendChild(spot);
         });
-        box.scrollTop = box.scrollHeight;
     });
 }
 
-// ==========================================
-// 4. PHYSICS & RENDERING
-// ==========================================
-
-function initJoystick() {
-    const joyZone = document.getElementById('joystick-zone');
-    if (!joyZone) return;
-    const manager = nipplejs.create({
-        zone: joyZone,
-        mode: 'static',
-        position: { left: '80px', bottom: '80px' },
-        color: 'cyan'
-    });
-
-    manager.on('move', (evt, data) => {
-        joystick.active = true;
-        const force = Math.min(data.force, 1);
-        joystick.x = Math.cos(data.angle.radian) * PLAYER_SPEED * force;
-        joystick.y = -Math.sin(data.angle.radian) * PLAYER_SPEED * force;
-        me.angle = data.angle.radian;
-    });
-
-    manager.on('end', () => {
-        joystick.active = false;
-        joystick.x = 0; joystick.y = 0;
-    });
+function updateUIProfile(user) {
+    document.getElementById('user-avatar').src = user.photoURL;
+    document.getElementById('user-name').innerText = user.displayName;
 }
-
-function gameLoop() {
-    if (!isPlaying) return;
-
-    if (joystick.active) {
-        me.x = Math.max(0, Math.min(MAP_SIZE, me.x + joystick.x));
-        me.y = Math.max(0, Math.min(MAP_SIZE, me.y + joystick.y));
-
-        if (Date.now() - me.lastUpdate > 50) {
-            update(ref(db, `players/${myId}`), { x: me.x, y: me.y, angle: me.angle });
-            me.lastUpdate = Date.now();
-        }
-    }
-
-    let distToCenter = Math.hypot(me.x - MAP_SIZE/2, me.y - MAP_SIZE/2);
-    if(distToCenter > zoneRadius) {
-        me.hp -= 0.2;
-        if(Math.random() > 0.9) update(ref(db, `players/${myId}`), { hp: me.hp });
-    }
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const camX = canvas.width / 2 - me.x;
-    const camY = canvas.height / 2 - me.y;
-
-    drawMap(ctx, camX, camY);
-    drawBullets(ctx, camX, camY);
-    drawPlayers(ctx, camX, camY);
-
-    requestAnimationFrame(gameLoop);
-}
-
-function drawMap(ctx, cx, cy) {
-    ctx.fillStyle = "#15151e";
-    ctx.fillRect(cx, cy, MAP_SIZE, MAP_SIZE);
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
-    ctx.lineWidth = 2;
-    for(let i=0; i<=MAP_SIZE; i+=200) {
-        ctx.beginPath(); ctx.moveTo(i+cx, cy); ctx.lineTo(i+cx, MAP_SIZE+cy); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx, i+cy); ctx.lineTo(MAP_SIZE+cx, i+cy); ctx.stroke();
-    }
-    ctx.strokeStyle = "#ff4b2b";
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.arc(MAP_SIZE/2 + cx, MAP_SIZE/2 + cy, zoneRadius, 0, Math.PI*2);
-    ctx.stroke();
-}
-
-function drawPlayers(ctx, cx, cy) {
-    for (let id in players) {
-        const p = players[id];
-        const px = p.x + cx;
-        const py = p.y + cy;
-        if(px < -50 || px > canvas.width+50 || py < -50 || py > canvas.height+50) continue;
-
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(-p.angle);
-        ctx.fillStyle = (id === myId) ? "#00f2ff" : "#ff4b2b";
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = ctx.fillStyle;
-        ctx.beginPath();
-        ctx.moveTo(25, 0); ctx.lineTo(-15, -20); ctx.lineTo(-15, 20); ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-
-        ctx.fillStyle = "white";
-        ctx.font = "bold 14px Oswald";
-        ctx.textAlign = "center";
-        ctx.fillText(p.name.toUpperCase(), px, py - 40);
-        ctx.fillStyle = "#333";
-        ctx.fillRect(px - 20, py - 35, 40, 5);
-        ctx.fillStyle = (p.hp > 30) ? "#4cd137" : "red";
-        ctx.fillRect(px - 20, py - 35, (p.hp/100)*40, 5);
-    }
-}
-
-function drawBullets(ctx, cx, cy) {
-    ctx.fillStyle = "#fff200";
-    for (let id in bullets) {
-        const b = bullets[id];
-        const elapsed = (Date.now() - b.t) / 16; 
-        const bx = b.x + (b.vx * elapsed) + cx;
-        const by = b.y + (b.vy * elapsed) + cy;
-        ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI*2); ctx.fill();
-        if(b.owner === myId) checkBulletCollision(b, id, bx - cx, by - cy);
-    }
-}
-
-function checkBulletCollision(b, bId, realBx, realBy) {
-    for (let id in players) {
-        if(id === myId) continue;
-        const p = players[id];
-        const dist = Math.hypot(realBx - p.x, realBy - p.y);
-        if(dist < 30) {
-            remove(ref(db, `bullets/${bId}`));
-            const newHp = Math.max(0, p.hp - 10);
-            update(ref(db, `players/${id}`), { hp: newHp });
-            if(newHp <= 0) update(ref(db, `players/${myId}`), { kills: me.kills + 1 });
-            break;
-        }
-    }
-}
-
-function gameOver() {
-    isPlaying = false;
-    alert("GAME OVER! ELIMINATED.");
-    remove(ref(db, `players/${myId}`));
-    location.reload();
-}
-
-setInterval(() => {
-    if(isPlaying && zoneRadius > 200) zoneRadius -= 2;
-}, 1000);
