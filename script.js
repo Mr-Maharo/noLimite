@@ -34,27 +34,30 @@ onAuthStateChanged(auth, (user) => {
     const lobby = document.getElementById('lobby-screen');
 
     if (user) {
-        login?.classList.add('hidden');
-        lobby?.classList.remove('hidden');
+        if (login) login.classList.add('hidden');
+        if (lobby) lobby.classList.remove('hidden');
 
         updateUIProfile(user);
         initLobby();
         saveUserStatus(user, true);
 
     } else {
-        login?.classList.remove('hidden');
-        lobby?.classList.add('hidden');
+        if (login) login.classList.remove('hidden');
+        if (lobby) lobby.classList.add('hidden');
     }
 });
 
-// LOGIN
-document.getElementById('btn-google')?.addEventListener('click', async () => {
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (e) {
-        console.error("Login error:", e);
-    }
-});
+// ================= LOGIN =================
+const btnGoogle = document.getElementById('btn-google');
+if (btnGoogle) {
+    btnGoogle.addEventListener('click', async () => {
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (e) {
+            console.error("Login error:", e);
+        }
+    });
+}
 
 // ================= SAVE USER =================
 async function saveUserStatus(user, isOnline) {
@@ -76,39 +79,42 @@ function updateUIProfile(user) {
 }
 
 // ================= QUICK PLAY =================
-document.getElementById('btn-quick-play')?.addEventListener('click', async () => {
-    const snapshot = await getDocs(collection(db, "rooms"));
-    let found = null;
+const btnQuick = document.getElementById('btn-quick-play');
+if (btnQuick) {
+    btnQuick.onclick = async () => {
+        const snapshot = await getDocs(collection(db, "rooms"));
+        let found = null;
 
-    snapshot.forEach(d => {
-        const r = d.data();
-        if (r.status === "waiting" && !r.opponent && !found) {
-            found = d.id;
-        }
-    });
-
-    if (found) {
-        window.joinRoom(found);
-    } else {
-        const uid = "ROOM-" + Math.floor(Math.random() * 9999);
-
-        await setDoc(doc(db, "rooms", uid), {
-            roomUID: uid,
-            creator: {
-                id: auth.currentUser.uid,
-                name: auth.currentUser.displayName
-            },
-            opponent: null,
-            status: "waiting",
-            turn: auth.currentUser.uid,
-            board: initFanoronaBoard(),
-            createdAt: serverTimestamp()
+        snapshot.forEach(d => {
+            const r = d.data();
+            if (r.status === "waiting" && !r.opponent && !found) {
+                found = d.id;
+            }
         });
 
-        myRole = "creator";
-        enterGameView(uid);
-    }
-});
+        if (found) {
+            window.joinRoom(found);
+        } else {
+            const uid = "ROOM-" + Math.floor(Math.random() * 9999);
+
+            await setDoc(doc(db, "rooms", uid), {
+                roomUID: uid,
+                creator: {
+                    id: auth.currentUser.uid,
+                    name: auth.currentUser.displayName
+                },
+                opponent: null,
+                status: "waiting",
+                turn: auth.currentUser.uid,
+                board: initFanoronaBoard(),
+                createdAt: serverTimestamp()
+            });
+
+            myRole = "creator";
+            enterGameView(uid);
+        }
+    };
+}
 
 // ================= LOBBY =================
 function initLobby() {
@@ -128,9 +134,7 @@ function initLobby() {
                 card.className = "room-card glass animate-pop";
 
                 card.innerHTML = `
-                    <div>
-                        <b>🏠 ${docu.id}</b>
-                    </div>
+                    <div><b>🏠 ${docu.id}</b></div>
                     <button class="btn-join" data-id="${docu.id}">Hiditra</button>
                 `;
 
@@ -173,7 +177,6 @@ function initLobby() {
 function initPlayerClick() {
     document.querySelectorAll('.player-item').forEach(el => {
         el.onclick = (e) => {
-
             mpilalaoVoafidy = {
                 id: el.dataset.id,
                 name: el.dataset.name
@@ -184,21 +187,20 @@ function initPlayerClick() {
 
             menu.style.top = e.clientY + "px";
             menu.style.left = e.clientX + "px";
-
             menu.classList.remove('hidden');
         };
     });
 }
 
-// ================= MENU ACTION =================
+// ================= MENU =================
 const btnChatUser = document.getElementById('btn-chat-user');
 if (btnChatUser) {
-    btnChatUser.addEventListener('click', () => {
+    btnChatUser.onclick = () => {
         if (!mpilalaoVoafidy) return;
 
         chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
         openChat();
-    });
+    };
 }
 
 const btnCloseChat = document.getElementById('close-chat');
@@ -214,7 +216,7 @@ if (btnCloseChat) {
 // ================= CHAT =================
 function openChat() {
 
-    if (unsubChat) unsubChat(); // 🔥 FIX
+    if (unsubChat) unsubChat();
 
     const panel = document.getElementById('chat-panel');
     const box = document.getElementById('chat-messages');
@@ -234,10 +236,8 @@ function openChat() {
 
             const div = document.createElement('div');
             div.innerText = m.text;
-
             box.appendChild(div);
 
-            // delete after 24h
             const now = Date.now();
             if (m.time?.seconds && (now - m.time.seconds * 1000 > 86400000)) {
                 deleteDoc(doc(db, "chats", chatId, "messages", docu.id));
@@ -248,21 +248,24 @@ function openChat() {
     });
 }
 
-// SEND
-document.getElementById('send-chat')?.onclick = async () => {
-    if (!chatId) return;
+// SEND CHAT
+const btnSend = document.getElementById('send-chat');
+if (btnSend) {
+    btnSend.onclick = async () => {
+        if (!chatId) return;
 
-    const input = document.getElementById('chat-text');
-    if (!input || !input.value.trim()) return;
+        const input = document.getElementById('chat-text');
+        if (!input || !input.value.trim()) return;
 
-    await addDoc(collection(db, "chats", chatId, "messages"), {
-        text: input.value,
-        sender: auth.currentUser.uid,
-        time: serverTimestamp()
-    });
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+            text: input.value,
+            sender: auth.currentUser.uid,
+            time: serverTimestamp()
+        });
 
-    input.value = "";
-};
+        input.value = "";
+    };
+}
 
 // ================= ROOM =================
 window.joinRoom = async (roomId) => {
@@ -288,8 +291,11 @@ window.joinRoom = async (roomId) => {
 function enterGameView(roomId) {
     currentRoomId = roomId;
 
-    document.getElementById('lobby-screen')?.classList.add('hidden');
-    document.getElementById('game-screen')?.classList.remove('hidden');
+    const lobby = document.getElementById('lobby-screen');
+    const game = document.getElementById('game-screen');
+
+    if (lobby) lobby.classList.add('hidden');
+    if (game) game.classList.remove('hidden');
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
         const data = snap.data();
