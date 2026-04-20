@@ -1,54 +1,47 @@
-<!DOCTYPE html>
-<html lang="mg">
-<head>
-    <title>Fanorona Online - Lalao Malagasy mavesatra NoLimite</title>
-    
-    <meta name="description" content="Milalaova Fanorona Online maimaim-poana. Lalao nentim-paharazana Malagasy amin'ny style Aura Rose sy Violet. Mifandona amin'ny namana izao! ">
-    
-    <meta name="keywords" content="Fanorona, Lalao Malagasy, Madagascar Game, Fanorona Online, NoLimite, Play Fanorona">
-
-    <meta name="theme-color" content="#9d50bb">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fanorona Online</title>
-
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
-</head>
-
-<body>
-
-<section id="login-screen" class="screen flex-center">
-    <div class="auth-card glass">
-        <h1 class="logo">FANORONA</h1>
-        <button id="btn-google" class="btn-anime-google">
-            Login Google
-        </button>
-    </div>
-</section>
-
 <section id="lobby-screen" class="screen hidden">
-    <button id="btn-create-room">Créer Room</button>
 
-    <div id="rooms-list-dynamic"></div>
-    <div id="players-list-dynamic"></div>
+    <!-- TOP BAR -->
+    <header class="topbar">
+
+        <!-- LEFT -->
+        <div class="left">
+            <img id="user-avatar" class="avatar">
+            <span id="user-name"></span>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="right">
+            <input id="search-player" placeholder="🔍 Player">
+            <input id="search-room" placeholder="🏠 Room UID">
+        </div>
+
+    </header>
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- ACTIONS -->
+        <div class="actions">
+            <button id="btn-create-room" class="btn primary">➕ Créer Room</button>
+            <button id="btn-quick-play" class="btn quick">⚡ Joindre rapidement</button>
+        </div>
+
+        <!-- GRID -->
+        <div class="grid">
+
+            <!-- ROOMS -->
+            <div class="card">
+                <h3>🏠 Rooms disponibles</h3>
+                <div id="rooms-list-dynamic" class="scroll"></div>
+            </div>
+
+            <!-- PLAYERS -->
+            <div class="card">
+                <h3>👥 Joueurs en ligne</h3>
+                <div id="players-list-dynamic" class="scroll"></div>
+            </div>
+
+        </div>
+
+    </main>
 </section>
-
-<section id="game-screen" class="screen hidden flex-center">
-    <div id="fanorona-grid"></div>
-</section>
-
-<!-- ✅ MODAL VOAHITSY -->
-<div id="modal-create" class="modal hidden">
-    <div class="modal-content">
-        <span class="close-modal">X</span>
-
-        <input type="text" id="room-uid-input" placeholder="UID">
-        <button id="btn-confirm-create">Créer</button>
-    </div>
-</div>
-
-<script type="module" src="script.js"></script>
-
-</body>
-</html>
