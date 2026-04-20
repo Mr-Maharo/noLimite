@@ -52,7 +52,7 @@ document.getElementById('btn-google')?.addEventListener('click', async () => {
     try {
         await signInWithPopup(auth, provider);
     } catch (e) {
-        console.error(e);
+        console.error("Login error:", e);
     }
 });
 
@@ -68,8 +68,11 @@ async function saveUserStatus(user, isOnline) {
 
 // ================= PROFILE =================
 function updateUIProfile(user) {
-    document.getElementById('user-avatar').src = user.photoURL;
-    document.getElementById('user-name').innerText = user.displayName;
+    const avatar = document.getElementById('user-avatar');
+    const name = document.getElementById('user-name');
+
+    if (avatar) avatar.src = user.photoURL;
+    if (name) name.innerText = user.displayName;
 }
 
 // ================= QUICK PLAY =================
@@ -177,6 +180,7 @@ function initPlayerClick() {
             };
 
             const menu = document.getElementById('player-menu');
+            if (!menu) return;
 
             menu.style.top = e.clientY + "px";
             menu.style.left = e.clientX + "px";
@@ -187,23 +191,30 @@ function initPlayerClick() {
 }
 
 // ================= MENU ACTION =================
-document.getElementById('btn-chat-user')?.addEventListener('click', () => {
-    if (!mpilalaoVoafidy) return;
+const btnChatUser = document.getElementById('btn-chat-user');
+if (btnChatUser) {
+    btnChatUser.onclick = () => {
+        if (!mpilalaoVoafidy) return;
 
-    chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
-
-    openChat();
-});
+        chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
+        openChat();
+    };
+}
 
 document.getElementById('close-chat')?.onclick = () => {
-    document.getElementById('chat-panel').classList.add('hidden');
+    document.getElementById('chat-panel')?.classList.add('hidden');
     if (unsubChat) unsubChat();
 };
 
 // ================= CHAT =================
 function openChat() {
+
+    if (unsubChat) unsubChat(); // 🔥 FIX
+
     const panel = document.getElementById('chat-panel');
     const box = document.getElementById('chat-messages');
+
+    if (!panel || !box) return;
 
     panel.classList.remove('hidden');
     box.innerHTML = "";
@@ -221,7 +232,7 @@ function openChat() {
 
             box.appendChild(div);
 
-            // 🔥 delete raha lany andro
+            // delete after 24h
             const now = Date.now();
             if (m.time?.seconds && (now - m.time.seconds * 1000 > 86400000)) {
                 deleteDoc(doc(db, "chats", chatId, "messages", docu.id));
@@ -234,8 +245,10 @@ function openChat() {
 
 // SEND
 document.getElementById('send-chat')?.onclick = async () => {
+    if (!chatId) return;
+
     const input = document.getElementById('chat-text');
-    if (!input.value.trim()) return;
+    if (!input || !input.value.trim()) return;
 
     await addDoc(collection(db, "chats", chatId, "messages"), {
         text: input.value,
