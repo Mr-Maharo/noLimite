@@ -25,13 +25,6 @@ let selectedStone = null;
 
 // --- 2. AUTHENTICATION & REDIRECT RESULT ---
 
-getRedirectResult(auth)
-.then((result) => {
-    if (result && result.user) {
-        console.log("✅ Redirect OK:", result.user);
-    }
-})
-.catch((error) => console.error("❌ Login Error:", error));
 
 onAuthStateChanged(auth, (user) => {
     console.log("USER:", user);
@@ -66,8 +59,15 @@ async function saveUserStatus(user, isOnline) {
     }, { merge: true });
 }
 
-const loginWithGoogle = () => {
-    signInWithRedirect(auth, provider);
+import { signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+const loginWithGoogle = async () => {
+    try {
+        const result = await signInWithPopup(auth, provider);
+        console.log("✅ Login OK:", result.user);
+    } catch (error) {
+        console.error("❌ Login error:", error);
+    }
 };
 
 const btnGoogle = document.getElementById('btn-google');
