@@ -61,14 +61,30 @@ if (btnGoogle) {
 
 // ================= SAVE USER =================
 async function saveUserStatus(user, isOnline) {
-    await setDoc(doc(db, "users", user.uid), {
-        name: user.displayName,
-        avatar: user.photoURL,
-        online: isOnline,
-        lastSeen: serverTimestamp()
-    }, { merge: true });
-}
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
 
+    if (!userSnap.exists()) {
+        // Raha sambany vao miditra amin'ity Email ity
+        await setDoc(userRef, {
+            name: user.displayName,
+            avatar: user.photoURL,
+            email: user.email,
+            online: isOnline,
+            createdAt: serverTimestamp(),
+            lastSeen: serverTimestamp()
+        });
+    } else {
+        // Raha efa nisy ilay kaonty dia havaozina fotsiny ny sata (status)
+        await updateDoc(userRef, {
+            online: isOnline,
+            lastSeen: serverTimestamp(),
+            // Ampio ireto raha sanatria nanova sary na anarana tany amin'ny Google izy
+            name: user.displayName,
+            avatar: user.photoURL
+        });
+    }
+}
 // ================= PROFILE =================
 function updateUIProfile(user) {
     const avatar = document.getElementById('user-avatar');
@@ -149,29 +165,28 @@ function initLobby() {
     });
 
     // PLAYERS
-    onSnapshot(collection(db, "users"), (snapshot) => {
-        const div = document.getElementById('players-list-dynamic');
-        if (!div) return;
+  // Mitady an'ity ao anatin'ny initLobby()
+onSnapshot(collection(db, "users"), (snapshot) => {
+    const div = document.getElementById('players-list-dynamic');
+    if (!div) return;
+    div.innerHTML = "";
 
-        div.innerHTML = "";
-
-        snapshot.forEach(pDoc => {
-            const p = pDoc.data();
-
-            if (p.online) {
-                div.innerHTML += `
-                <div class="player-item glass animate-pop"
-                     data-id="${pDoc.id}"
-                     data-name="${p.name}">
-                    <img src="${p.avatar}" class="small-avatar">
-                    <span>${p.name}</span>
-                </div>`;
-            }
-        });
-
-        initPlayerClick();
+    snapshot.forEach(pDoc => {
+        const p = pDoc.data();
+        
+        // SIVANA: Aza aseho ao amin'ny lisitra ny tenako (auth.currentUser.uid)
+        if (p.online && pDoc.id !== auth.currentUser.uid) { 
+            div.innerHTML += `
+            <div class="player-item glass animate-pop"
+                 data-id="${pDoc.id}"
+                 data-name="${p.name}">
+                <img src="${p.avatar}" class="small-avatar">
+                <span>${p.name}</span>
+            </div>`;
+        }
     });
-}
+    initPlayerClick();
+});
 
 // ================= PLAYER CLICK =================
 function initPlayerClick() {
