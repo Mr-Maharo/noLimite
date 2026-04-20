@@ -1,12 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
-    getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
+    getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
-    getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, 
-    query, orderBy, serverTimestamp, arrayUnion, deleteDoc 
+    getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
 
 // --- 1. CONFIGURATION ---
 const firebaseConfig = {
@@ -21,22 +19,28 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// State an'ny lalao
 let currentRoomId = null;
-let myRole = null; // 'creator' (Mainty/1) na 'opponent' (Fotsy/2)
+let myRole = null; 
 let selectedStone = null; 
 
-// --- 2. AUTHENTICATION & USER STATUS ---
+// --- 2. AUTHENTICATION & REDIRECT RESULT ---
+
+// Mihaino ny valin'ny fidirana avy amin'ny Redirect
+getRedirectResult(auth).catch((error) => console.error("Login Error:", error));
+
 onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const lobbyScreen = document.getElementById('lobby-screen');
+
     if (user) {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('lobby-screen').classList.remove('hidden');
+        loginScreen.classList.add('hidden');
+        lobbyScreen.classList.remove('hidden');
         updateUIProfile(user);
         initLobby();
         saveUserStatus(user, true);
     } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('lobby-screen').classList.add('hidden');
+        loginScreen.classList.remove('hidden');
+        lobbyScreen.classList.add('hidden');
     }
 });
 
@@ -49,30 +53,15 @@ async function saveUserStatus(user, isOnline) {
     }, { merge: true });
 }
 
-
-// Function hisahana ny Login
-const loginWithGoogle = async () => {
-    try {
-        console.log("Andrana fidirana amin'ny Google...");
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        console.log("Tafiditra soa aman-tsara:", user.displayName);
-        
-        // Rehefa tafiditra dia hita ny Lobby
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('lobby-screen').classList.remove('hidden');
-        
-    } catch (error) {
-        console.error("Fahadisoana tamin'ny Login:", error.message);
-        alert("Nisy olana: " + error.message);
-    }
+const loginWithGoogle = () => {
+    signInWithRedirect(auth, provider);
 };
 
-// Ampifandraisina amin'ilay bokotra ny click
 document.getElementById('btn-google').addEventListener('click', loginWithGoogle);
+
 // --- 3. LOBBY LOGIC ---
+
 function initLobby() {
-    // Mihaino ny Rooms rehetra
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const roomsDiv = document.getElementById('rooms-list-dynamic');
         roomsDiv.innerHTML = "";
@@ -86,14 +75,18 @@ function initLobby() {
                         <b>🏠 ${roomDoc.id}</b> 
                         <span>${room.prive ? '🔒' : '🔓'} | Tours: ${room.maxTours}</span>
                     </div>
-                    <button class="btn-join" onclick="joinRoom('${roomDoc.id}')">Hiditra</button>
+                    <button class="btn-join" data-id="${roomDoc.id}">Hiditra</button>
                 `;
                 roomsDiv.appendChild(card);
             }
         });
+
+        // Ampifandraisina ny click amin'ny bokotra Join rehetra
+        document.querySelectorAll('.btn-join').forEach(btn => {
+            btn.onclick = () => window.joinRoom(btn.getAttribute('data-id'));
+        });
     });
 
-    // Mihaino ny Online Players
     onSnapshot(collection(db, "users"), (snapshot) => {
         const playersDiv = document.getElementById('players-list-dynamic');
         playersDiv.innerHTML = "";
@@ -101,7 +94,7 @@ function initLobby() {
             const p = pDoc.data();
             if (p.online) {
                 playersDiv.innerHTML += `
-                    <div class="player-item glass animate-fade">
+                    <div class="player-item glass">
                         <img src="${p.avatar}" class="small-avatar">
                         <span>${p.name}</span>
                     </div>`;
@@ -110,7 +103,7 @@ function initLobby() {
     });
 }
 
-// --- 4. FANORONA CORE ENGINE (Rules & Logic) ---
+// --- 4. FANORONA ENGINE (Logic tsy miova) ---
 
 function initFanoronaBoard() {
     let board = Array(5).fill().map(() => Array(9).fill(0));
@@ -139,24 +132,21 @@ function isValidMove(r1, c1, r2, c2, board) {
     return true;
 }
 
-// Algorithm Tika sy Taka
 function executeMove(r1, c1, r2, c2, board, player) {
     let newBoard = JSON.parse(JSON.stringify(board));
     newBoard[r2][c2] = player;
     newBoard[r1][c1] = 0;
-
     const dr = r2 - r1;
     const dc = c2 - c1;
     const enemy = (player === 1) ? 2 : 1;
 
-    // Tika (Approach)
+    // Approach
     let nextR = r2 + dr; let nextC = c2 + dc;
     while (nextR >= 0 && nextR < 5 && nextC >= 0 && nextC < 9 && newBoard[nextR][nextC] === enemy) {
         newBoard[nextR][nextC] = 0;
         nextR += dr; nextC += dc;
     }
-
-    // Taka (Withdrawal)
+    // Withdrawal
     let backR = r1 - dr; let backC = c1 - dc;
     while (backR >= 0 && backR < 5 && backC >= 0 && backC < 9 && newBoard[backR][backC] === enemy) {
         newBoard[backR][backC] = 0;
@@ -175,7 +165,7 @@ document.getElementById('btn-confirm-create').onclick = async () => {
 
     if (!uid) return alert("UID ilaina!");
 
-    const roomData = {
+    await setDoc(doc(db, "rooms", uid), {
         roomUID: uid,
         maxTours: parseInt(tours),
         prive: isPrive,
@@ -186,13 +176,12 @@ document.getElementById('btn-confirm-create').onclick = async () => {
         turn: auth.currentUser.uid,
         board: initFanoronaBoard(),
         createdAt: serverTimestamp()
-    };
-
-    await setDoc(doc(db, "rooms", uid), roomData);
+    });
     myRole = 'creator';
     enterGameView(uid);
 };
 
+// Natao "window." mba hitan'ny HTML
 window.joinRoom = async (roomId) => {
     const roomRef = doc(db, "rooms", roomId);
     const snap = await getDoc(roomRef);
@@ -212,17 +201,16 @@ window.joinRoom = async (roomId) => {
     enterGameView(roomId);
 };
 
-// --- 6. GAMEPLAY SYNC & UI ---
+// --- 6. GAMEPLAY SYNC ---
 
 function enterGameView(roomId) {
     currentRoomId = roomId;
     document.getElementById('lobby-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden'); // Ataovy azo antoka fa misy ity ID ity
+    document.getElementById('game-screen').classList.remove('hidden');
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
         const game = snap.data();
-        if (!game) return;
-        renderGameBoard(game);
+        if (game) renderGameBoard(game);
     });
 }
 
@@ -248,11 +236,15 @@ function renderGameBoard(game) {
 
                 if (cell === myNum) {
                     selectedStone = { r, c };
-                    renderGameBoard(game); // Refresh highlight
+                    renderGameBoard(game);
                 } else if (selectedStone && cell === 0) {
                     if (isValidMove(selectedStone.r, selectedStone.c, r, c, game.board)) {
                         const newBoard = executeMove(selectedStone.r, selectedStone.c, r, c, game.board, myNum);
-                        const nextTurn = (myRole === 'creator') ? game.opponent.id : game.creator.id;
+                        
+                        // Fikajiana ny turn manaraka
+                        const nextTurn = (myRole === 'creator') 
+                            ? (game.opponent ? game.opponent.id : game.turn) 
+                            : game.creator.id;
                         
                         await updateDoc(doc(db, "rooms", currentRoomId), {
                             board: newBoard,
