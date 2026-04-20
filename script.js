@@ -159,20 +159,28 @@ function initLobby() {
         });
     });
 
-    onSnapshot(collection(db, "users"), (snapshot) => {
-        const playersDiv = document.getElementById('players-list-dynamic');
-        if (!playersDiv) return;
+  onSnapshot(collection(db, "users"), (snapshot) => {
+    const playersDiv = document.getElementById('players-list-dynamic');
+    if (!playersDiv) return;
 
-        playersDiv.innerHTML = "";
+    playersDiv.innerHTML = "";
 
-        snapshot.forEach(pDoc => {
-            const p = pDoc.data();
-            if (p.online) {
-                playersDiv.innerHTML += `<div>${p.name}</div>`;
-            }
-        });
+    snapshot.forEach(pDoc => {
+        const p = pDoc.data();
+
+        if (p.online) {
+            playersDiv.innerHTML += `
+            <div class="player-item" 
+                 data-id="${pDoc.id}" 
+                 data-name="${p.name}">
+                ${p.name}
+            </div>`;
+        }
     });
-}
+
+    // 🔥 IMPORTANT
+    initPlayerClick();
+});
 
 // --- CREATE ROOM ---
 const btnCreate = document.getElementById('btn-confirm-create');
