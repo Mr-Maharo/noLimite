@@ -3,10 +3,12 @@ import {
     getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
-    getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, serverTimestamp, query, orderBy, addDoc, deleteDoc
+    getFirestore, collection, doc, setDoc, getDoc, updateDoc,
+    onSnapshot, serverTimestamp, getDocs, addDoc,
+    query, orderBy, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// --- CONFIG ---
+// ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
     authDomain: "nolimite-29e0b.firebaseapp.com",
@@ -19,71 +21,42 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 let currentRoomId = null;
-let myRole = null; 
+let myRole = null;
+
+// CHAT
 let mpilalaoVoafidy = null;
 let chatId = null;
 let unsubChat = null;
 
-// --- AUTH ---
+// ================= AUTH =================
 onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const lobbyScreen = document.getElementById('lobby-screen');
+    const login = document.getElementById('login-screen');
+    const lobby = document.getElementById('lobby-screen');
 
     if (user) {
-        if (loginScreen) loginScreen.classList.add('hidden');
-        if (lobbyScreen) lobbyScreen.classList.remove('hidden');
+        login?.classList.add('hidden');
+        lobby?.classList.remove('hidden');
+
         updateUIProfile(user);
         initLobby();
         saveUserStatus(user, true);
+
     } else {
-        if (loginScreen) loginScreen.classList.remove('hidden');
-        if (lobbyScreen) lobbyScreen.classList.add('hidden');
+        login?.classList.remove('hidden');
+        lobby?.classList.add('hidden');
     }
 });
 
-// --- LOGIN ---
-const btnGoogle = document.getElementById('btn-google');
-if (btnGoogle) {
-    btnGoogle.onclick = async () => {
-        try { await signInWithPopup(auth, provider); } 
-        catch (e) { console.error(e); }
-    };
-}
+// LOGIN
+document.getElementById('btn-google')?.addEventListener('click', async () => {
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (e) {
+        console.error(e);
+    }
+});
 
-// --- QUICK PLAY ---
-const btnQuick = document.getElementById('btn-quick-play');
-if (btnQuick) {
-    btnQuick.onclick = async () => {
-        const snapshot = await getDocs(collection(db, "rooms"));
-        let foundRoom = null;
-
-        snapshot.forEach(docu => {
-            const room = docu.data();
-            if (room.status === "waiting" && !room.opponent && !foundRoom) {
-                foundRoom = docu.id;
-            }
-        });
-
-        if (foundRoom) {
-            window.joinRoom(foundRoom);
-        } else {
-            const uid = "ROOM-" + Math.floor(Math.random() * 10000);
-            await setDoc(doc(db, "rooms", uid), {
-                roomUID: uid,
-                creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-                opponent: null,
-                status: "waiting",
-                turn: auth.currentUser.uid,
-                board: initFanoronaBoard(),
-                createdAt: serverTimestamp()
-            });
-            myRole = "creator";
-            enterGameView(uid);
-        }
-    };
-}
-
-// --- SAVE USER ---
+// ================= SAVE USER =================
 async function saveUserStatus(user, isOnline) {
     await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
@@ -93,125 +66,242 @@ async function saveUserStatus(user, isOnline) {
     }, { merge: true });
 }
 
+// ================= PROFILE =================
 function updateUIProfile(user) {
     document.getElementById('user-avatar').src = user.photoURL;
     document.getElementById('user-name').innerText = user.displayName;
 }
 
-// --- LOBBY ---
+// ================= QUICK PLAY =================
+document.getElementById('btn-quick-play')?.addEventListener('click', async () => {
+    const snapshot = await getDocs(collection(db, "rooms"));
+    let found = null;
+
+    snapshot.forEach(d => {
+        const r = d.data();
+        if (r.status === "waiting" && !r.opponent && !found) {
+            found = d.id;
+        }
+    });
+
+    if (found) {
+        window.joinRoom(found);
+    } else {
+        const uid = "ROOM-" + Math.floor(Math.random() * 9999);
+
+        await setDoc(doc(db, "rooms", uid), {
+            roomUID: uid,
+            creator: {
+                id: auth.currentUser.uid,
+                name: auth.currentUser.displayName
+            },
+            opponent: null,
+            status: "waiting",
+            turn: auth.currentUser.uid,
+            board: initFanoronaBoard(),
+            createdAt: serverTimestamp()
+        });
+
+        myRole = "creator";
+        enterGameView(uid);
+    }
+});
+
+// ================= LOBBY =================
 function initLobby() {
+
+    // ROOMS
     onSnapshot(collection(db, "rooms"), (snapshot) => {
-        const roomsDiv = document.getElementById('rooms-list-dynamic');
-        if (!roomsDiv) return;
-        roomsDiv.innerHTML = "";
-        snapshot.forEach(roomDoc => {
-            const room = roomDoc.data();
-            if (room.status !== "finished") {
+        const div = document.getElementById('rooms-list-dynamic');
+        if (!div) return;
+
+        div.innerHTML = "";
+
+        snapshot.forEach(docu => {
+            const r = docu.data();
+
+            if (r.status !== "finished") {
                 const card = document.createElement('div');
-                card.className = "player-item";
-                card.innerHTML = `<b>${roomDoc.id}</b> <button class="btn quick" style="padding:5px" data-id="${roomDoc.id}">Hiditra</button>`;
-                roomsDiv.appendChild(card);
+                card.className = "room-card glass animate-pop";
+
+                card.innerHTML = `
+                    <div>
+                        <b>🏠 ${docu.id}</b>
+                    </div>
+                    <button class="btn-join" data-id="${docu.id}">Hiditra</button>
+                `;
+
+                div.appendChild(card);
             }
         });
-        document.querySelectorAll('#rooms-list-dynamic [data-id]').forEach(btn => {
-            btn.onclick = () => window.joinRoom(btn.getAttribute('data-id'));
+
+        document.querySelectorAll('#rooms-list-dynamic [data-id]')
+        .forEach(btn => {
+            btn.onclick = () => window.joinRoom(btn.dataset.id);
         });
     });
 
+    // PLAYERS
     onSnapshot(collection(db, "users"), (snapshot) => {
-        const playersDiv = document.getElementById('players-list-dynamic');
-        if (!playersDiv) return;
-        playersDiv.innerHTML = "";
+        const div = document.getElementById('players-list-dynamic');
+        if (!div) return;
+
+        div.innerHTML = "";
+
         snapshot.forEach(pDoc => {
             const p = pDoc.data();
-            if (p.online && pDoc.id !== auth.currentUser.uid) {
-                const div = document.createElement('div');
-                div.className = "player-item";
-                div.dataset.id = pDoc.id;
-                div.dataset.name = p.name;
-                div.innerText = p.name;
-                playersDiv.appendChild(div);
+
+            if (p.online) {
+                div.innerHTML += `
+                <div class="player-item glass animate-pop"
+                     data-id="${pDoc.id}"
+                     data-name="${p.name}">
+                    <img src="${p.avatar}" class="small-avatar">
+                    <span>${p.name}</span>
+                </div>`;
             }
         });
+
         initPlayerClick();
     });
 }
 
-// --- CHAT SYSTEM ---
+// ================= PLAYER CLICK =================
 function initPlayerClick() {
-    document.querySelectorAll('#players-list-dynamic .player-item').forEach(el => {
+    document.querySelectorAll('.player-item').forEach(el => {
         el.onclick = (e) => {
-            e.stopPropagation();
-            mpilalaoVoafidy = { id: el.dataset.id, name: el.dataset.name };
+
+            mpilalaoVoafidy = {
+                id: el.dataset.id,
+                name: el.dataset.name
+            };
+
             const menu = document.getElementById('player-menu');
+
             menu.style.top = e.clientY + "px";
             menu.style.left = e.clientX + "px";
+
             menu.classList.remove('hidden');
         };
     });
 }
 
-document.getElementById('btn-open-chat').onclick = () => {
+// ================= MENU ACTION =================
+document.getElementById('btn-chat-user')?.addEventListener('click', () => {
     if (!mpilalaoVoafidy) return;
+
     chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
-    document.getElementById('chat-username').innerText = mpilalaoVoafidy.name;
-    document.getElementById('chat-panel').classList.remove('hidden');
-    document.getElementById('player-menu').classList.add('hidden');
-    startChat();
+
+    openChat();
+});
+
+document.getElementById('close-chat')?.onclick = () => {
+    document.getElementById('chat-panel').classList.add('hidden');
+    if (unsubChat) unsubChat();
 };
 
-function startChat() {
-    if (unsubChat) unsubChat();
-    const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt"));
-    unsubChat = onSnapshot(q, async (snap) => {
-        const box = document.getElementById('chat-messages');
+// ================= CHAT =================
+function openChat() {
+    const panel = document.getElementById('chat-panel');
+    const box = document.getElementById('chat-messages');
+
+    panel.classList.remove('hidden');
+    box.innerHTML = "";
+
+    const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
+
+    unsubChat = onSnapshot(q, (snapshot) => {
         box.innerHTML = "";
-        snap.forEach(d => {
-            const m = d.data();
-            box.innerHTML += `<div class="msg ${m.sender === auth.currentUser.uid ? 'me' : 'other'}">${m.text}</div>`;
+
+        snapshot.forEach(docu => {
+            const m = docu.data();
+
+            const div = document.createElement('div');
+            div.innerText = m.text;
+
+            box.appendChild(div);
+
+            // 🔥 delete raha lany andro
+            const now = Date.now();
+            if (m.time?.seconds && (now - m.time.seconds * 1000 > 86400000)) {
+                deleteDoc(doc(db, "chats", chatId, "messages", docu.id));
+            }
         });
+
         box.scrollTop = box.scrollHeight;
     });
 }
 
-document.getElementById('send-chat').onclick = async () => {
-    const input = document.getElementById('chat-input');
-    if (!input.value.trim() || !chatId) return;
+// SEND
+document.getElementById('send-chat')?.onclick = async () => {
+    const input = document.getElementById('chat-text');
+    if (!input.value.trim()) return;
+
     await addDoc(collection(db, "chats", chatId, "messages"), {
         text: input.value,
         sender: auth.currentUser.uid,
-        createdAt: Date.now()
+        time: serverTimestamp()
     });
+
     input.value = "";
 };
 
-// Hanidy menu raha mikitika toerana hafa
-document.addEventListener('click', () => document.getElementById('player-menu').classList.add('hidden'));
-
-// --- GAME FUNCTIONS ---
+// ================= ROOM =================
 window.joinRoom = async (roomId) => {
-    const roomRef = doc(db, "rooms", roomId);
-    const snap = await getDoc(roomRef);
-    if (!snap.exists()) return alert("Room tsy misy");
-    await updateDoc(roomRef, {
-        opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+    const ref = doc(db, "rooms", roomId);
+    const snap = await getDoc(ref);
+    const room = snap.data();
+
+    if (!room) return alert("Room tsy misy");
+
+    await updateDoc(ref, {
+        opponent: {
+            id: auth.currentUser.uid,
+            name: auth.currentUser.displayName
+        },
         status: "playing"
     });
+
     myRole = 'opponent';
     enterGameView(roomId);
 };
 
+// ================= GAME =================
 function enterGameView(roomId) {
-    document.getElementById('lobby-screen').classList.add('hidden');
-    // Eto ianao no mampiseho ny 'game-screen' raha efa namboarinao
+    currentRoomId = roomId;
+
+    document.getElementById('lobby-screen')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
+
+    onSnapshot(doc(db, "rooms", roomId), (snap) => {
+        const data = snap.data();
+        if (data) renderGameBoard(data);
+    });
 }
 
+// ================= FANORONA =================
 function initFanoronaBoard() {
-    let board = Array(5).fill().map(() => Array(9).fill(0));
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 9; j++) {
-            if (i < 2) board[i][j] = 1; else if (i > 2) board[i][j] = 2; else board[i][j] = 0;
-        }
-    }
-    return board;
+    return Array(5).fill().map(() => Array(9).fill(0));
+}
+
+function renderGameBoard(game) {
+    const grid = document.getElementById('fanorona-grid');
+    if (!grid) return;
+
+    grid.innerHTML = "";
+
+    game.board.forEach(row => {
+        row.forEach(cell => {
+            const div = document.createElement('div');
+            div.className = "grid-spot";
+
+            if (cell !== 0) {
+                const stone = document.createElement('div');
+                stone.className = `stone ${cell === 1 ? 'black' : 'white'}`;
+                div.appendChild(stone);
+            }
+
+            grid.appendChild(div);
+        });
+    });
 }
