@@ -1,106 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="mg">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-   <title>AURA RISE - Online Battle Royale Game</title>
-
-<meta name="description" content="Play AURA RISE, a multiplayer battle royale game online. Fight, survive and become the best player.">
-
-<meta name="keywords" content="battle royale game, online game, multiplayer, aura rise, maharo studio">
-
-<meta name="author" content="Maharo Studio">
+    <title>Fanorona Online - Anime Edition</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <div id="auth-screen" class="overlay">
-        <div class="auth-card">
-            <h1 class="logo-text">AURA RISE</h1>
-            <p style="color: #aaa; margin-bottom: 20px;">MAHARO STUDIO PRESENT</p>
-            <input type="text" id="name" placeholder="Player Name (for Sign Up)">
-            <input type="email" id="email" placeholder="Email Address">
-            <input type="password" id="password" placeholder="Password">
-            <div class="auth-buttons">
-                <button id="login-btn">LOGIN</button>
-                <button id="signup-btn" class="btn-alt">SIGN UP</button>
+    <section id="login-screen" class="screen flex-center">
+        <div class="auth-card glass animate-pop">
+            <h1 class="logo">FANORONA</h1>
+            <p>Ny hery tsy hita maso no mitarika ny vato.</p>
+            <button id="btn-google" class="btn-anime-google">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
+                Midira amin'ny Google
+            </button>
+        </div>
+    </section>
+
+    <section id="lobby-screen" class="screen hidden">
+        <aside class="sidebar glass">
+            <div class="profile">
+                <div class="avatar-glow">
+                    <img id="user-avatar" src="" alt="Avatar">
+                </div>
+                <h3 id="user-name">Mpilalao</h3>
             </div>
+            <nav>
+                <button class="btn-side">⚙️ Paramètre</button>
+                <button id="btn-logout" class="btn-side danger">🚪 Hivoaka</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar glass">
+                <div class="search-box">
+                    <input type="text" id="search-player" placeholder="🔍 Hitady mpilalao...">
+                    <input type="text" id="search-room" placeholder="🏠 Hitady Room (UID)...">
+                </div>
+            </header>
+
+            <div class="dashboard">
+                <div class="actions">
+                    <button id="btn-create-room" class="btn-action primary">➕ Hamorona Efitra</button>
+                    <button id="btn-quick-play" class="btn-action secondary">⚡ Jouer Rapidement</button>
+                </div>
+
+                <div class="lists-grid">
+                    <div class="list-card glass">
+                        <h3>🏠 Efitra azo idirana</h3>
+                        <div id="rooms-list-dynamic" class="scroll-area"></div>
+                    </div>
+                    <div class="list-card glass">
+                        <h3>👥 Mpilalao Online</h3>
+                        <div id="players-list-dynamic" class="scroll-area"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <section id="game-screen" class="screen hidden flex-center">
+        <div class="game-container glass animate-pop">
+            <div class="game-header">
+                <div class="player-tag p1">Mainty</div>
+                <div id="game-status" class="status-msg">Anjaranao ny mamindra</div>
+                <div class="player-tag p2">Fotsy</div>
+            </div>
+
+            <div id="fanorona-grid" class="fanorona-grid">
+                </div>
+
+            <button onclick="location.reload()" class="btn-exit">Hiala amin'ny lalao</button>
+        </div>
+    </section>
+
+    <div id="modal-create" class="modal">
+        <div class="modal-content glass-dark animate-pop">
+            <span class="close-modal">&times;</span>
+            <h2>Efitra Vaovao</h2>
+            <div class="field">
+                <label>UID (Anaran'ny efitra)</label>
+                <input type="text" id="room-uid-input" placeholder="Ohatra: FAN-101">
+            </div>
+            <div class="field">
+                <label>Tours</label>
+                <select id="room-tours-select">
+                    <option value="1">1 Tour</option>
+                    <option value="3" selected>3 Tours</option>
+                    <option value="6">6 Tours</option>
+                </select>
+            </div>
+            <div class="field-inline">
+                <label>Efitra Privé?</label>
+                <input type="checkbox" id="check-prive">
+            </div>
+            <div id="pass-field" class="field hidden">
+                <input type="password" id="room-pass-input" placeholder="Teny miafina...">
+            </div>
+            <button id="btn-confirm-create" class="btn-confirm">HANOMBOKA</button>
         </div>
     </div>
 
-    <div id="main-hub" style="display:none;">
-        <div class="top-bar">
-            <div class="user-pill">
-                <div class="avatar-icon"></div>
-                <span id="top-username">PLAYER</span>
-            </div>
-            <div class="currency-box">
-                <div class="coin">🪙 <span>5000</span></div>
-                <div class="diamond">💎 <span>150</span></div>
-            </div>
-        </div>
-
-        <nav class="sidebar">
-            <div class="nav-item active" onclick="switchSection('home')">🏠<p>HOME</p></div>
-            <div class="nav-item" onclick="switchSection('profile')">👤<p>VAULT</p></div>
-            <div class="nav-item" onclick="switchSection('messages')">💬<p>CHAT</p></div>
-        </nav>
-
-        <div class="content-area">
-            <section id="sec-home" class="game-section">
-                <div class="character-preview"></div>
-                <div class="matchmaking-panel">
-                    <div class="mode-info">
-                        <h3>RANKED MATCH</h3>
-                        <p>MAP: BERMUDA 2.0</p>
-                    </div>
-                    <button id="start-btn">START</button>
-                </div>
-            </section>
-
-            <section id="sec-profile" class="game-section" style="display:none;">
-                <div class="glass-panel">
-                    <h2>PLAYER STATISTICS</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card"><span>KILLS</span><h2 id="prof-kills">0</h2></div>
-                        <div class="stat-card"><span>WINS</span><h2>0</h2></div>
-                        <div class="stat-card"><span>HP</span><h2 id="prof-hp">100</h2></div>
-                    </div>
-                    <button class="logout-btn" onclick="location.reload()">LOGOUT</button>
-                </div>
-            </section>
-
-            <section id="sec-messages" class="game-section" style="display:none;">
-                <div class="chat-container">
-                    <div id="chat-messages" class="chat-display"></div>
-                    <div class="chat-input-row">
-                        <input type="text" id="chat-input" placeholder="Type a message...">
-                        <button id="send-btn">➤</button>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <div id="game-ui" style="display:none;">
-        <div class="game-hud">
-            <div class="health-container">
-                <div id="hp-bar" class="health-fill"></div>
-                <span class="hp-text">HP</span>
-            </div>
-            <div class="kill-counter">💀 <span id="kill-val">0</span></div>
-        </div>
-        <div id="joystick-zone"></div>
-        <div class="controls-right">
-            <button id="btn-attack">🔥</button>
-        </div>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
     <script type="module" src="script.js"></script>
-
 </body>
 </html>
