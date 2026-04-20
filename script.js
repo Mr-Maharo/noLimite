@@ -193,18 +193,23 @@ function initPlayerClick() {
 // ================= MENU ACTION =================
 const btnChatUser = document.getElementById('btn-chat-user');
 if (btnChatUser) {
-    btnChatUser.onclick = () => {
+    btnChatUser.addEventListener('click', () => {
         if (!mpilalaoVoafidy) return;
 
         chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
         openChat();
-    };
+    });
 }
 
-document.getElementById('close-chat')?.onclick = () => {
-    document.getElementById('chat-panel')?.classList.add('hidden');
-    if (unsubChat) unsubChat();
-};
+const btnCloseChat = document.getElementById('close-chat');
+if (btnCloseChat) {
+    btnCloseChat.onclick = () => {
+        const panel = document.getElementById('chat-panel');
+        if (panel) panel.classList.add('hidden');
+
+        if (unsubChat) unsubChat();
+    };
+}
 
 // ================= CHAT =================
 function openChat() {
