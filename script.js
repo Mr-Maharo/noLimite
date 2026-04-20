@@ -85,6 +85,25 @@ function updateUIProfile(user) {
     document.getElementById('user-name').innerText = user.displayName;
 }
 
+// ================= PLAYER CLICK (FIX) =================
+function initPlayerClick() {
+    document.querySelectorAll('.player-item').forEach(el => {
+        el.onclick = (e) => {
+            mpilalaoVoafidy = {
+                id: el.dataset.id,
+                name: el.dataset.name
+            };
+
+            const menu = document.getElementById('player-menu');
+            if (menu) {
+                menu.style.top = e.clientY + "px";
+                menu.style.left = e.clientX + "px";
+                menu.classList.remove('hidden');
+            }
+        };
+    });
+}
+
 // ================= ROOM TYPE =================
 const roomType = document.getElementById('room-type');
 const roomPassword = document.getElementById('room-password');
@@ -135,6 +154,7 @@ document.getElementById('btn-quick-play').onclick = async () => {
 // ================= LOBBY =================
 function initLobby() {
 
+    // ROOMS
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const div = document.getElementById('rooms-list-dynamic');
         div.innerHTML = "";
@@ -155,26 +175,8 @@ function initLobby() {
             }
         });
     });
-// ================= PLAYER CLICK =================
-function initPlayerClick() {
-    document.querySelectorAll('.player-item').forEach(el => {
-        el.onclick = (e) => {
 
-            mpilalaoVoafidy = {
-                id: el.dataset.id,
-                name: el.dataset.name
-            };
-
-            const menu = document.getElementById('player-menu');
-
-            if (menu) {
-                menu.style.top = e.clientY + "px";
-                menu.style.left = e.clientX + "px";
-                menu.classList.remove('hidden');
-            }
-        };
-    });
-}
+    // PLAYERS
     onSnapshot(collection(db, "users"), (snapshot) => {
         const div = document.getElementById('players-list-dynamic');
         div.innerHTML = "";
@@ -197,7 +199,7 @@ function initPlayerClick() {
             }
         });
 
-        initPlayerClick();
+        initPlayerClick(); // ✔️ miasa tsara izao
     });
 }
 
