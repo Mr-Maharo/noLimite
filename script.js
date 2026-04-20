@@ -1,11 +1,12 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
     getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut 
-} from "https://www.gstatic.com/firebasejs/9/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
     getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, 
     query, orderBy, serverTimestamp, arrayUnion, deleteDoc 
-} from "https://www.gstatic.com/firebasejs/9/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
 
 // --- 1. CONFIGURATION ---
 const firebaseConfig = {
