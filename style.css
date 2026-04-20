@@ -1,277 +1,401 @@
-/* BASE */
-body {
+/* ================= GLOBAL STYLES ================= */
+:root {
+    --primary: #00f2ff; /* Cyan Neon */
+    --secondary: #7000ff; /* Purple Neon */
+    --bg-dark: #05050b;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-color: #e0e0e0;
+}
+
+* {
     margin: 0;
-    font-family: Poppins, sans-serif;
-    background: #0f172a;
-    color: white;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.hidden {
-    display: none !important;
+body {
+    font-family: 'Poppins', sans-serif;
+    background: radial-gradient(circle at center, #1a1a2e 0%, var(--bg-dark) 100%);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden; /* Misoroka ny scroll an'ny body iray manontolo */
 }
 
-/* LAYOUT */
+.hidden { display: none !important; }
+.flex-center { display: flex; justify-content: center; align-items: center; }
+
+/* ================= GLASSMORPHISM EFFECT ================= */
+.glass {
+    background: rgba(20, 20, 35, 0.8);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* ================= LOGIN SCREEN ================= */
+.screen {
+    width: 100%;
+    height: 100vh;
+}
+
+.auth-card {
+    padding: 3rem;
+    text-align: center;
+    border-radius: 20px;
+    border: 1px solid var(--primary);
+}
+
+.logo {
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 5px;
+    color: var(--primary);
+    text-shadow: 0 0 20px rgba(0, 242, 255, 0.6);
+    margin-bottom: 2rem;
+}
+
+.btn-anime-google {
+    background: white;
+    color: #333;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s ease;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.btn-anime-google:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px var(--primary);
+}
+
+/* ================= LOBBY LAYOUT ================= */
 #lobby-screen {
+    display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 300px;
+    height: 100vh;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-radius: 0;
+    border-right: 1px solid var(--glass-border);
+}
+
+.profile {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.avatar-glow {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    padding: 3px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    box-shadow: 0 0 20px rgba(112, 0, 255, 0.4);
+}
+
+.avatar-glow img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #222;
+}
+
+.btn-side {
+    width: 100%;
+    padding: 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--primary);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-side:hover {
+    background: var(--primary);
+    color: black;
+}
+
+/* MAIN CONTENT */
+.main-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
     height: 100vh;
 }
-/* ITEM MPILALAO */
-.player-item {
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 8px;
-    transition: 0.2s;
-}
 
-.player-item:hover {
-    background: #334155;
-    transform: scale(1.03);
-}
-
-/* MENU */
-.player-menu {
-    position: fixed;
-    background: rgba(30,41,59,0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 10px;
-    padding: 10px;
+.top-fixed {
+    padding: 1.5rem;
+    margin: 1rem;
     display: flex;
-    flex-direction: column;
-    gap: 5px;
-    z-index: 300;
-    animation: fadeIn 0.2s ease;
-}
-
-.player-menu button {
-    background: transparent;
-    border: none;
-    color: white;
-    padding: 8px;
-    text-align: left;
-    cursor: pointer;
-    border-radius: 6px;
-}
-
-.player-menu button:hover {
-    background: #475569;
-}
-
-/* CHAT */
-.chat {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-
-    width: 320px;
-    height: 420px;
-
-    background: rgba(15,23,42,0.95);
-    backdrop-filter: blur(20px);
-
+    gap: 1rem;
     border-radius: 15px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-
-    transform: translateY(100px);
-    opacity: 0;
-    animation: slideUp 0.3s forwards;
 }
 
-/* LOHATENY */
-.chat-header {
-    padding: 10px;
-    background: rgba(51,65,85,0.8);
+.top-fixed input {
+    flex: 1;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: white;
+    outline: none;
+}
+
+.top-fixed input:focus {
+    border-color: var(--primary);
+}
+
+.content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.list-card {
+    padding: 1.5rem;
+    border-radius: 20px;
+    height: fit-content;
+    min-height: 400px;
+}
+
+.list-card h3 {
+    margin-bottom: 1rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+}
+
+.scroll-area {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* ITEM LIST STYLING (Rooms & Players) */
+.player-item, .room-item {
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-left: 4px solid var(--secondary);
+    transition: 0.2s;
+    cursor: pointer;
 }
 
-.chat-user {
+.player-item:hover {
+    background: rgba(112, 0, 255, 0.1);
+    transform: translateX(5px);
+}
+
+/* ================= CHAT PANEL ================= */
+.chat-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    height: 450px;
+    background: #0a0a14;
+    border: 1px solid var(--secondary);
+    border-radius: 15px;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    z-index: 1000;
+    box-shadow: 0 0 30px rgba(0,0,0,1);
 }
 
-.avatar-mini {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #3b82f6;
+.chat-header {
+    padding: 15px;
+    background: rgba(112, 0, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--glass-border);
 }
 
-/* HAFATRA */
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
-
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
 }
 
 .msg {
-    max-width: 70%;
     padding: 8px 12px;
     border-radius: 10px;
-    animation: pop 0.2s ease;
+    font-size: 0.9rem;
+    max-width: 85%;
 }
 
 .msg.me {
+    background: var(--secondary);
     align-self: flex-end;
-    background: #3b82f6;
+    color: white;
 }
 
 .msg.other {
+    background: #2a2a35;
     align-self: flex-start;
-    background: #334155;
 }
 
-/* INPUT */
 .chat-input {
+    padding: 10px;
     display: flex;
-    border-top: 1px solid #334155;
+    gap: 8px;
+    border-top: 1px solid var(--glass-border);
 }
 
 .chat-input input {
     flex: 1;
-    padding: 10px;
-    border: none;
     background: transparent;
-    color: white;
-}
-
-.chat-input button {
-    padding: 10px;
-    background: #3b82f6;
     border: none;
     color: white;
-    cursor: pointer;
-}
-
-/* ANIMATION */
-@keyframes slideUp {
-    to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes pop {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-/* --- TOP BAR --- */
-.topbar {
-    height: 70px;
-    background: #1e293b;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-
-    z-index: 100;
-    border-bottom: 1px solid #334155;
-}
-
-/* LEFT */
-.left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-/* RIGHT */
-.right {
-    display: flex;
-    gap: 10px;
-}
-
-.right input {
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: none;
     outline: none;
 }
 
-/* --- MAIN --- */
-.main {
-    margin-top: 70px;
-    padding: 20px;
-
-    height: calc(100vh - 70px);
-    overflow-y: auto;
-}
-
-/* ACTIONS */
-.actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-/* BUTTONS */
-.btn {
-    padding: 10px 15px;
+.chat-input button {
+    background: var(--secondary);
     border: none;
-    border-radius: 6px;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 5px;
     cursor: pointer;
-    font-weight: bold;
 }
 
-.primary {
-    background: #22c55e;
-}
-
-.quick {
-    background: #3b82f6;
-}
-
-/* GRID */
-.grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-/* CARD */
-.card {
-    background: #1e293b;
-    padding: 15px;
+/* ================= PLAYER CONTEXT MENU ================= */
+.player-menu {
+    position: fixed;
+    width: 180px;
+    background: #1a1a2e;
+    border: 1px solid var(--primary);
     border-radius: 10px;
-    display: flex;
-    flex-direction: column;
+    padding: 5px;
+    z-index: 2000;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
 }
 
-/* SCROLL LIST */
-.scroll {
-    margin-top: 10px;
-    overflow-y: auto;
-    max-height: 400px;
-}
-
-/* ITEM STYLE (rooms / players) */
-.scroll div {
-    background: #334155;
+.player-menu button {
+    width: 100%;
     padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 8px;
+    background: none;
+    border: none;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.player-menu button:hover {
+    background: var(--primary);
+    color: black;
+}
+
+/* ================= MODAL ================= */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+}
+
+.modal-content {
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    width: 300px;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 20px 0;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--primary);
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 25px;
+    cursor: pointer;
+}
+
+/* ================= GAME SCREEN (FANORONA BOARD) ================= */
+.game-container {
+    padding: 40px;
+    border-radius: 20px;
+    border: 2px solid var(--primary);
+}
+
+#fanorona-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 60px);
+    grid-template-rows: repeat(5, 60px);
+    gap: 15px;
+    position: relative;
+}
+
+/* Placeholder ho an'ny sary eo amin'ny board */
+.grid-spot {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.grid-spot:hover {
+    background: rgba(0, 242, 255, 0.2);
+}
+
+/* Vato mainty sy fotsy */
+.stone {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.stone.black { background: #111; border: 2px solid #444; }
+.stone.white { background: #eee; border: 2px solid #aaa; }
+
+/* ANIMATION */
+.animate-pop {
+    animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
