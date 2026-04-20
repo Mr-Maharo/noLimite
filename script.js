@@ -154,34 +154,35 @@ function initLobby() {
             }
         });
 
-        document.querySelectorAll('[data-id]').forEach(btn => {
+        // 🔥 FIX (rooms only)
+        document.querySelectorAll('#rooms-list-dynamic [data-id]').forEach(btn => {
             btn.onclick = () => window.joinRoom(btn.getAttribute('data-id'));
         });
     });
 
-  onSnapshot(collection(db, "users"), (snapshot) => {
-    const playersDiv = document.getElementById('players-list-dynamic');
-    if (!playersDiv) return;
+    onSnapshot(collection(db, "users"), (snapshot) => {
+        const playersDiv = document.getElementById('players-list-dynamic');
+        if (!playersDiv) return;
 
-    playersDiv.innerHTML = "";
+        playersDiv.innerHTML = "";
 
-    snapshot.forEach(pDoc => {
-        const p = pDoc.data();
+        snapshot.forEach(pDoc => {
+            const p = pDoc.data();
 
-        if (p.online) {
-            playersDiv.innerHTML += `
-            <div class="player-item" 
-                 data-id="${pDoc.id}" 
-                 data-name="${p.name}">
-                ${p.name}
-            </div>`;
-        }
+            if (p.online) {
+                playersDiv.innerHTML += `
+                <div class="player-item" 
+                     data-id="${pDoc.id}" 
+                     data-name="${p.name}">
+                    ${p.name}
+                </div>`;
+            }
+        });
+
+        // 🔥 IMPORTANT
+        initPlayerClick();
     });
-
-    // 🔥 IMPORTANT
-    initPlayerClick();
-});
-
+}
 // --- CREATE ROOM ---
 const btnCreate = document.getElementById('btn-confirm-create');
 if (btnCreate) {
