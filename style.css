@@ -1,69 +1,127 @@
+/* BASE */
 body {
     margin: 0;
-    font-family: 'Poppins', sans-serif;
-    background: #1e1e2f;
+    font-family: Poppins, sans-serif;
+    background: #0f172a;
     color: white;
-
-    /* ❗ FIX */
-    overflow: auto;
 }
 
-/* Screens */
-.screen {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-}
-
-/* Hidden system */
 .hidden {
     display: none !important;
 }
 
-.flex-center {
-    justify-content: center;
+/* LAYOUT */
+#lobby-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* --- TOP BAR --- */
+.topbar {
+    height: 70px;
+    background: #1e293b;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-}
+    padding: 0 20px;
 
-/* Buttons */
-button {
-    cursor: pointer;
-    padding: 10px 20px;
-    border: none;
-}
-
-/* Grid */
-#fanorona-grid {
-    display: grid;
-    grid-template-columns: repeat(9, 60px);
-    gap: 5px;
-}
-
-/* --- ✅ MODAL FIX --- */
-.modal {
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
 
-    width: 100%;
-    height: 100%;
+    z-index: 100;
+    border-bottom: 1px solid #334155;
+}
 
-    display: flex; /* ❗ tsy display:none intsony */
-    justify-content: center;
+/* LEFT */
+.left {
+    display: flex;
     align-items: center;
-
-    background: rgba(0,0,0,0.7);
-    z-index: 999;
+    gap: 10px;
 }
 
-/* content */
-.modal-content {
-    background: #2c2c3a;
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* RIGHT */
+.right {
+    display: flex;
+    gap: 10px;
+}
+
+.right input {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+}
+
+/* --- MAIN --- */
+.main {
+    margin-top: 70px;
     padding: 20px;
-    border-radius: 10px;
+
+    height: calc(100vh - 70px);
+    overflow-y: auto;
 }
 
-/* close btn */
-.close-modal {
+/* ACTIONS */
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* BUTTONS */
+.btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
+    font-weight: bold;
+}
+
+.primary {
+    background: #22c55e;
+}
+
+.quick {
+    background: #3b82f6;
+}
+
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* CARD */
+.card {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* SCROLL LIST */
+.scroll {
+    margin-top: 10px;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+/* ITEM STYLE (rooms / players) */
+.scroll div {
+    background: #334155;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
 }
