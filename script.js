@@ -42,7 +42,49 @@ onAuthStateChanged(auth, (user) => {
         if (lobbyScreen) lobbyScreen.classList.add('hidden');
     }
 });
+const btnQuick = document.getElementById('btn-quick-play');
 
+if (btnQuick) {
+    btnQuick.onclick = async () => {
+
+        const snapshot = await getDocs(collection(db, "rooms"));
+
+        let foundRoom = null;
+
+        snapshot.forEach(docu => {
+            const room = docu.data();
+
+            // 🔥 mitady room mbola tsy feno
+            if (room.status === "waiting" && !room.opponent && !foundRoom) {
+                foundRoom = docu.id;
+            }
+        });
+
+        if (foundRoom) {
+            // 👉 miditra direct
+            window.joinRoom(foundRoom);
+        } else {
+            // 👉 raha tsy misy dia mamorona
+            const uid = "ROOM-" + Math.floor(Math.random() * 10000);
+
+            await setDoc(doc(db, "rooms", uid), {
+                roomUID: uid,
+                creator: {
+                    id: auth.currentUser.uid,
+                    name: auth.currentUser.displayName
+                },
+                opponent: null,
+                status: "waiting",
+                turn: auth.currentUser.uid,
+                board: initFanoronaBoard(),
+                createdAt: serverTimestamp()
+            });
+
+            myRole = "creator";
+            enterGameView(uid);
+        }
+    };
+}
 // --- LOGIN FIX (POPUP) ---
 const btnGoogle = document.getElementById('btn-google');
 if (btnGoogle) {
