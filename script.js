@@ -49,6 +49,27 @@ async function saveUserStatus(user, isOnline) {
     }, { merge: true });
 }
 
+
+// Function hisahana ny Login
+const loginWithGoogle = async () => {
+    try {
+        console.log("Andrana fidirana amin'ny Google...");
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        console.log("Tafiditra soa aman-tsara:", user.displayName);
+        
+        // Rehefa tafiditra dia hita ny Lobby
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('lobby-screen').classList.remove('hidden');
+        
+    } catch (error) {
+        console.error("Fahadisoana tamin'ny Login:", error.message);
+        alert("Nisy olana: " + error.message);
+    }
+};
+
+// Ampifandraisina amin'ilay bokotra ny click
+document.getElementById('btn-google').addEventListener('click', loginWithGoogle);
 // --- 3. LOBBY LOGIC ---
 function initLobby() {
     // Mihaino ny Rooms rehetra
