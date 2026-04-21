@@ -7,7 +7,14 @@ import {
     onSnapshot, serverTimestamp, getDocs, addDoc,
     query, orderBy
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+const btnOpen = document.getElementById('btn-create-room');
 
+if (btnOpen) {
+    btnOpen.onclick = () => {
+        console.log("CLICK OK"); // test
+        document.getElementById('modal-create').classList.remove('hidden');
+    };
+}
 // ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
