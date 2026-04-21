@@ -28,12 +28,20 @@ let mpilalaoVoafidy = null;
 let chatId = null;
 let unsubChat = null;
 
+// ================= UTILS =================
+function generateUID() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function initFanoronaBoard() {
+    const board = Array(5).fill().map(() => Array(9).fill(0));
+    return JSON.stringify(board);
+}
+
 // ================= AUTH =================
 onAuthStateChanged(auth, (user) => {
     const login = document.getElementById('login-screen');
     const lobby = document.getElementById('lobby-screen');
-
-    if (!login || !lobby) return;
 
     if (user) {
         login.classList.add('hidden');
@@ -48,110 +56,10 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// ================= DOM READY =================
-window.addEventListener("DOMContentLoaded", () => {
-
-    // LOGIN
-    const btnGoogle = document.getElementById('btn-google');
-    if (btnGoogle) {
-        btnGoogle.onclick = async () => {
-            await signInWithPopup(auth, provider);
-        };
-    }
-
-    // OPEN MODAL
-    const btnOpen = document.getElementById('btn-create-room');
-    const modal = document.getElementById('modal-create');
-    const btnClose = document.querySelector('.close-modal');
-
-    if (btnOpen && modal) {
-        btnOpen.onclick = () => modal.classList.remove('hidden');
-    }
-
-    if (btnClose && modal) {
-        btnClose.onclick = () => modal.classList.add('hidden');
-    }
-
-    // ROOM TYPE
-    const roomType = document.getElementById('room-type');
-    const roomPassword = document.getElementById('room-password');
-
-    if (roomType && roomPassword) {
-        roomType.onchange = () => {
-            if (roomType.value === "private") {
-                roomPassword.style.display = "block";
-            } else {
-                roomPassword.style.display = "none";
-                roomPassword.value = "";
-            }
-        };
-    }
-
-    // QUICK PLAY
-    const btnQuick = document.getElementById('btn-quick-play');
-    if (btnQuick) {
-        btnQuick.onclick = async () => {
-            const snapshot = await getDocs(collection(db, "rooms"));
-            let found = null;
-
-            snapshot.forEach(d => {
-                const r = d.data();
-                if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
-                    found = d.id;
-                }
-            });
-
-            if (found) {
-                joinRoom(found);
-            } else {
-                const uid = "ROOM-" + Math.floor(Math.random() * 9999);
-                await setDoc(doc(db, "rooms", uid), {
-                    roomUID: uid,
-                    creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-                    opponent: null,
-                    status: "waiting",
-                    type: "public",
-                    password: null,
-                    turn: auth.currentUser.uid,
-                    board: initFanoronaBoard(),
-                    createdAt: serverTimestamp()
-                });
-                myRole = "creator";
-                enterGameView(uid);
-            }
-        };
-    }
-
-    // CREATE ROOM
-    const btnCreate = document.getElementById('btn-confirm-create');
-    if (btnCreate) {
-        btnCreate.onclick = async () => {
-
-            const id = document.getElementById('room-uid-input').value.trim();
-            const type = document.getElementById('room-type')?.value || "public";
-            const password = document.getElementById('room-password')?.value.trim() || "";
-
-            if (!id) return alert("Ampidiro ny anaran'ny efitra!");
-            if (type === "private" && !password) return alert("Ampidiro ny teny miafina!");
-
-            await setDoc(doc(db, "rooms", id), {
-                roomUID: id,
-                creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-                opponent: null,
-                status: "waiting",
-                type: type,
-                password: type === "private" ? password : null,
-                turn: auth.currentUser.uid,
-                board: initFanoronaBoard(),
-                createdAt: serverTimestamp()
-            });
-
-            myRole = "creator";
-            document.getElementById('modal-create').classList.add('hidden');
-            enterGameView(id);
-        };
-    }
-});
+// ================= LOGIN =================
+document.getElementById('btn-google').onclick = async () => {
+    await signInWithPopup(auth, provider);
+};
 
 // ================= SAVE USER =================
 async function saveUserStatus(user, isOnline) {
@@ -183,10 +91,8 @@ async function saveUserStatus(user, isOnline) {
 
 // ================= PROFILE =================
 function updateUIProfile(user) {
-    const avatar = document.getElementById('user-avatar');
-    const name = document.getElementById('user-name');
-    if (avatar) avatar.src = user.photoURL;
-    if (name) name.innerText = user.displayName;
+    document.getElementById('user-avatar').src = user.photoURL;
+    document.getElementById('user-name').innerText = user.displayName;
 }
 
 // ================= PLAYER CLICK =================
@@ -199,45 +105,150 @@ function initPlayerClick() {
             };
 
             const menu = document.getElementById('player-menu');
-            if (menu) {
-                menu.style.top = e.clientY + "px";
-                menu.style.left = e.clientX + "px";
-                menu.classList.remove('hidden');
-            }
+            menu.style.top = e.clientY + "px";
+            menu.style.left = e.clientX + "px";
+            menu.classList.remove('hidden');
         };
     });
 }
+
+// ================= PLAYER MENU ACTION =================
+document.getElementById('btn-play-user').onclick = async () => {
+    if (!mpilalaoVoafidy) return;
+
+    const uid = generateUID();
+
+    await setDoc(doc(db, "rooms", uid), {
+        roomUID: uid,
+        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+        opponent: { id: mpilalaoVoafidy.id, name: mpilalaoVoafidy.name },
+        status: "playing",
+        type: "public",
+        password: null,
+        turn: auth.currentUser.uid,
+        board: initFanoronaBoard(),
+        createdAt: serverTimestamp()
+    });
+
+    myRole = "creator";
+    document.getElementById('player-menu').classList.add('hidden');
+    enterGameView(uid);
+};
+
+document.getElementById('btn-chat-user').onclick = () => {
+    if (!mpilalaoVoafidy) return;
+
+    chatId = [auth.currentUser.uid, mpilalaoVoafidy.id].sort().join("_");
+    openChat();
+    document.getElementById('player-menu').classList.add('hidden');
+};
+
+// ================= CLOSE MENU =================
+window.addEventListener('click', (e) => {
+    const menu = document.getElementById('player-menu');
+    if (!e.target.closest('.player-item')) {
+        menu.classList.add('hidden');
+    }
+});
+
+// ================= CHAT =================
+function openChat() {
+    if (unsubChat) unsubChat();
+
+    const panel = document.getElementById('chat-panel');
+    const box = document.getElementById('chat-messages');
+
+    panel.classList.remove('hidden');
+
+    const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
+
+    unsubChat = onSnapshot(q, (snapshot) => {
+        box.innerHTML = "";
+
+        snapshot.forEach(docu => {
+            const m = docu.data();
+
+            const div = document.createElement('div');
+            div.innerText = m.text;
+
+            box.appendChild(div);
+        });
+
+        box.scrollTop = box.scrollHeight;
+    });
+}
+
+document.getElementById('send-chat').onclick = async () => {
+    const input = document.getElementById('chat-text');
+
+    if (!chatId || !input.value.trim()) return;
+
+    await addDoc(collection(db, "chats", chatId, "messages"), {
+        text: input.value,
+        sender: auth.currentUser.uid,
+        time: serverTimestamp()
+    });
+
+    input.value = "";
+};
+
+// ================= QUICK PLAY =================
+document.getElementById('btn-quick-play').onclick = async () => {
+    const snapshot = await getDocs(collection(db, "rooms"));
+    let found = null;
+
+    snapshot.forEach(d => {
+        const r = d.data();
+        if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
+            found = d.id;
+        }
+    });
+
+    if (found) {
+        joinRoom(found);
+    } else {
+        const uid = generateUID();
+
+        await setDoc(doc(db, "rooms", uid), {
+            roomUID: uid,
+            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+            opponent: { id: "BOT", name: "🤖 Bot" },
+            status: "playing",
+            type: "public",
+            password: null,
+            turn: auth.currentUser.uid,
+            board: initFanoronaBoard(),
+            createdAt: serverTimestamp()
+        });
+
+        myRole = "creator";
+        enterGameView(uid);
+
+        setTimeout(() => botPlay(uid), 1500);
+    }
+};
 
 // ================= LOBBY =================
 function initLobby() {
 
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const div = document.getElementById('rooms-list-dynamic');
-        if (!div) return;
-
         div.innerHTML = "";
 
         snapshot.forEach(docu => {
             const r = docu.data();
 
-            if (r.status !== "finished") {
-                const card = document.createElement('div');
-                card.className = "room-item animate-pop";
-
-                card.innerHTML = `
-                    <span>🏠 ${docu.id} ${r.type === "private" ? "🔒" : "🌐"}</span>
-                    <button class="btn-side" onclick="joinRoom('${docu.id}')">Hiditra</button>
-                `;
-
-                div.appendChild(card);
-            }
+            const card = document.createElement('div');
+            card.innerHTML = `
+                ${docu.id}
+                <button onclick="joinRoom('${docu.id}')">Hiditra</button>
+            `;
+            div.appendChild(card);
         });
     });
 
     onSnapshot(collection(db, "users"), (snapshot) => {
         const div = document.getElementById('players-list-dynamic');
-        if (!div) return;
-
         div.innerHTML = "";
 
         snapshot.forEach(pDoc => {
@@ -245,13 +256,13 @@ function initLobby() {
 
             if (p.online && pDoc.id !== auth.currentUser.uid) {
                 const el = document.createElement('div');
-                el.className = "player-item animate-pop";
+                el.className = "player-item";
                 el.dataset.id = pDoc.id;
                 el.dataset.name = p.name;
 
                 el.innerHTML = `
-                    <img src="${p.avatar}" style="width:30px;border-radius:50%">
-                    <span>${p.name}</span>
+                    <img src="${p.avatar}" width="30">
+                    ${p.name}
                 `;
 
                 div.appendChild(el);
@@ -262,18 +273,13 @@ function initLobby() {
     });
 }
 
-// ================= JOIN ROOM =================
+// ================= JOIN =================
 window.joinRoom = async (roomId) => {
 
     const snap = await getDoc(doc(db, "rooms", roomId));
     const room = snap.data();
 
-    if (!room) return alert("Tsy misy io efitra io");
-
-    if (room.type === "private") {
-        const input = prompt("Ampidiro ny teny miafina:");
-        if (input !== room.password) return alert("Diso ny teny miafina!");
-    }
+    if (!room) return alert("Tsy misy io");
 
     await updateDoc(doc(db, "rooms", roomId), {
         opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
@@ -288,39 +294,51 @@ window.joinRoom = async (roomId) => {
 function enterGameView(roomId) {
     currentRoomId = roomId;
 
-    const lobby = document.getElementById('lobby-screen');
-    const game = document.getElementById('game-screen');
-
-    if (lobby) lobby.classList.add('hidden');
-    if (game) game.classList.remove('hidden');
+    document.getElementById('lobby-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
-        if (snap.exists()) renderGameBoard(snap.data());
+        renderGameBoard(snap.data());
     });
-}
-
-function initFanoronaBoard() {
-    return Array(5).fill().map(() => Array(9).fill(0));
 }
 
 function renderGameBoard(game) {
     const grid = document.getElementById('fanorona-grid');
-    if (!grid) return;
-
     grid.innerHTML = "";
 
-    game.board.forEach(row => {
+    const board = JSON.parse(game.board);
+
+    board.forEach(row => {
         row.forEach(cell => {
             const div = document.createElement('div');
-            div.className = "grid-spot";
 
             if (cell !== 0) {
                 const stone = document.createElement('div');
-                stone.className = `stone ${cell === 1 ? 'black' : 'white'}`;
+                stone.className = cell === 1 ? "black" : "white";
                 div.appendChild(stone);
             }
 
             grid.appendChild(div);
         });
+    });
+}
+
+// ================= BOT =================
+async function botPlay(roomId) {
+    const ref = doc(db, "rooms", roomId);
+    const snap = await getDoc(ref);
+    const data = snap.data();
+
+    if (!data) return;
+
+    let board = JSON.parse(data.board);
+
+    const x = Math.floor(Math.random() * 5);
+    const y = Math.floor(Math.random() * 9);
+
+    board[x][y] = 2;
+
+    await updateDoc(ref, {
+        board: JSON.stringify(board)
     });
 }
