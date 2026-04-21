@@ -283,6 +283,12 @@ function renderGameBoard(game) {
         const div = document.createElement('div');
         div.className = "grid-spot";
 
+        // --- FANAMPINY: Highlight selection ---
+        if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) {
+            div.style.background = "rgba(255, 215, 0, 0.4)"; 
+            div.style.borderRadius = "50%";
+        }
+
         if (cell.value !== 0) {
             const stone = document.createElement('div');
             stone.className = `stone ${cell.value === 1 ? 'black' : 'white'}`;
@@ -302,7 +308,12 @@ function handleCellClick(cell, game) {
 
     if (!selectedCell) {
         if (cell.value !== 0) {
-            selectedCell = cell;
+            // Tsy mahazo mikitika vato fahavalo
+            const myVal = (game.creator.id === auth.currentUser.uid) ? 1 : 2;
+            if (cell.value === myVal) {
+                selectedCell = cell;
+                renderGameBoard(game); // Refresh mba hiseho ny highlight
+            }
         }
         return;
     }
@@ -312,9 +323,28 @@ function handleCellClick(cell, game) {
 
     if (dx <= 1 && dy <= 1 && cell.value === 0) {
 
-        game.board.forEach(c => {
+        // --- FANAMPINY: Capture Logic (Basic) ---
+        // Ity no mampihena ny vaton'ny fahavalo raha misy "Approach"
+        let currentBoard = [...game.board];
+        const myValue = selectedCell.value;
+        const opponentValue = (myValue === 1) ? 2 : 1;
+
+        // Fikirakirana ny board
+        currentBoard.forEach(c => {
             if (c.x === selectedCell.x && c.y === selectedCell.y) c.value = 0;
-            if (c.x === cell.x && c.y === cell.y) c.value = selectedCell.value;
+            if (c.x === cell.x && c.y === cell.y) c.value = myValue;
+        });
+
+        // Ohatra fohy amin'ny fihinanana (Approach kely)
+        const dirX = cell.x - selectedCell.x;
+        const dirY = cell.y - selectedCell.y;
+        const nextX = cell.x + dirX;
+        const nextY = cell.y + dirY;
+
+        currentBoard.forEach(c => {
+            if (c.x === nextX && c.y === nextY && c.value === opponentValue) {
+                c.value = 0; // Hohanina ny vato manaraka raha Approach
+            }
         });
 
         selectedCell = null;
@@ -324,12 +354,13 @@ function handleCellClick(cell, game) {
             : game.creator.id;
 
         updateDoc(doc(db, "rooms", currentRoomId), {
-            board: game.board,
+            board: currentBoard,
             turn: nextTurn
         });
 
     } else {
         selectedCell = null;
+        renderGameBoard(game);
     }
 }
 
@@ -342,18 +373,29 @@ function botPlay(game) {
 
         if (!myPieces.length || !empty.length) return;
 
-        const from = myPieces[Math.floor(Math.random() * myPieces.length)];
-        const to = empty[Math.floor(Math.random() * empty.length)];
+        // Bot mahay mihetsika mifanakaiky fa tsy mitsambikina
+        let validBotMove = null;
+        for (let p of myPieces) {
+            let targets = empty.filter(e => Math.abs(e.x - p.x) <= 1 && Math.abs(e.y - p.y) <= 1);
+            if (targets.length > 0) {
+                validBotMove = { from: p, to: targets[0] };
+                break;
+            }
+        }
 
-        game.board.forEach(c => {
-            if (c.x === from.x && c.y === from.y) c.value = 0;
-            if (c.x === to.x && c.y === to.y) c.value = 2;
-        });
+        if (validBotMove) {
+            game.board.forEach(c => {
+                if (c.x === validBotMove.from.x && c.y === validBotMove.from.y) c.value = 0;
+                if (c.x === validBotMove.to.x && c.y === validBotMove.to.y) c.value = 2;
+            });
 
-        updateDoc(doc(db, "rooms", currentRoomId), {
-            board: game.board,
-            turn: game.creator.id
-        });
+            updateDoc(doc(db, "rooms", currentRoomId), {
+                board: game.board,
+                turn: game.creator.id
+            });
+        }
 
     }, 800);
 }
+
+// FANAMARIHANA: Ity kaody ity dia efa nampiana ny fanatsarana nefa nitazona ny fomba fanoratanao rehetra.
