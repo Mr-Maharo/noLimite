@@ -4,13 +4,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
     getFirestore, collection, doc, setDoc, getDoc, updateDoc,
-    onSnapshot, serverTimestamp, getDocs, addDoc,
-    query, orderBy
+    onSnapshot, serverTimestamp, getDocs, addDoc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // ================= CONFIG =================
 const firebaseConfig = {
-    apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
+    apiKey: "AIzaSy...",
     authDomain: "nolimite-29e0b.firebaseapp.com",
     projectId: "nolimite-29e0b",
 };
@@ -22,604 +21,401 @@ const provider = new GoogleAuthProvider();
 
 // ================= VARIABLES =================
 let currentRoomId = null;
-let myRole = null;
 let selectedCell = null;
 
-let mpilalaoVoafidy = null;
-let chatId = null;
-let unsubChat = null;
+let invitesUnsub = null;
+let friendsUnsub = null;
 
 // ================= AUTH =================
 onAuthStateChanged(auth, (user) => {
-    const login = document.getElementById('login-screen');
-    const lobby = document.getElementById('lobby-screen');
 
-    if (user) {
-        login.classList.add('hidden');
-        lobby.classList.remove('hidden');
+    if (!user) return;
 
-        updateUIProfile(user);
-        initLobby();
-        saveUserStatus(user, true);
-    } else {
-        login.classList.remove('hidden');
-        lobby.classList.add('hidden');
-    }
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('lobby-screen').classList.remove('hidden');
+
+    initLobby();
+    initFriends(user.uid);
+    initInvites(user.uid);
 });
 
 // ================= LOGIN =================
-document.getElementById('btn-google').onclick = async () => {
-    await signInWithPopup(auth, provider);
+document.getElementById('btn-google').onclick = () => {
+    signInWithPopup(auth, provider);
 };
 
-// ================= SAVE USER =================
-async function saveUserStatus(user, isOnline) {
-    const snapshot = await getDocs(collection(db, "users"));
-    let existing = null;
+// ================= UTILS =================
+function cloneBoard(board) {
+    return JSON.parse(JSON.stringify(board));
+}
 
-    snapshot.forEach(docu => {
-        if (docu.data().email === user.email) existing = docu.id;
+function getCell(board, x, y) {
+    return board.find(c => c.x === x && c.y === y);
+}
+
+function addClick(el, fn) {
+    el.onclick = fn;
+    el.ontouchstart = fn;
+}
+
+// ================= FRIEND SYSTEM =================
+async function addFriend(friendId, friendName) {
+
+    const myId = auth.currentUser.uid;
+
+    await setDoc(doc(db, "friends", `${myId}_${friendId}`), {
+        users: [myId, friendId],
+        names: [auth.currentUser.displayName, friendName],
+        createdAt: serverTimestamp()
     });
 
-    if (existing) {
-        await updateDoc(doc(db, "users", existing), {
-            online: isOnline,
-            lastSeen: serverTimestamp(),
-            name: user.displayName,
-            avatar: user.photoURL
-        });
-    } else {
-        await setDoc(doc(db, "users", user.uid), {
-            name: user.displayName,
-            avatar: user.photoURL,
-            email: user.email,
-            online: isOnline,
-            createdAt: serverTimestamp(),
-            lastSeen: serverTimestamp()
-        });
-    }
+    await setDoc(doc(db, "friends", `${friendId}_${myId}`), {
+        users: [friendId, myId],
+        names: [friendName, auth.currentUser.displayName],
+        createdAt: serverTimestamp()
+    });
 }
 
-// ================= PROFILE =================
-function updateUIProfile(user) {
-    document.getElementById('user-avatar').src = user.photoURL;
-    document.getElementById('user-name').innerText = user.displayName;
-}
+function initFriends(uid) {
 
-// ================= PLAYER CLICK =================
-function initPlayerClick() {
-    document.querySelectorAll('.player-item').forEach(el => {
-        el.onclick = (e) => {
-            mpilalaoVoafidy = {
-                id: el.dataset.id,
-                name: el.dataset.name
-            };
+    if (friendsUnsub) friendsUnsub();
 
-            const menu = document.getElementById('player-menu');
-            if (menu) {
-                menu.style.top = e.clientY + "px";
-                menu.style.left = e.clientX + "px";
-                menu.classList.remove('hidden');
+    friendsUnsub = onSnapshot(collection(db, "friends"), (snap) => {
+
+        const list = document.getElementById("friends-list");
+        if (!list) return;
+
+        list.innerHTML = "";
+
+        snap.forEach(docSnap => {
+            const f = docSnap.data();
+
+            if (f.users.includes(uid)) {
+
+                const i = f.users[0] === uid ? 1 : 0;
+
+                const el = document.createElement("div");
+                el.innerHTML = `
+                    👤 ${f.names[i]}
+                    <button onclick="sendInvite('${f.users[i]}','${f.names[i]}')">Invite</button>
+                `;
+                list.appendChild(el);
             }
-        };
+        });
     });
 }
 
-// ================= QUICK PLAY =================
-document.getElementById('btn-quick-play').onclick = async () => {
-    const snapshot = await getDocs(collection(db, "rooms"));
-    let found = null;
+// ================= INVITE SYSTEM =================
+function isExpired(invite) {
+    return Date.now() - invite.createdAt > 30000;
+}
 
-    snapshot.forEach(d => {
-        const r = d.data();
-        if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
-            found = d.id;
-        }
+async function sendInvite(id, name) {
+
+    await addDoc(collection(db, "invites"), {
+        from: auth.currentUser.uid,
+        fromName: auth.currentUser.displayName,
+        to: id,
+        toName: name,
+        status: "pending",
+        createdAt: Date.now()
+    });
+}
+
+function initInvites(uid) {
+
+    if (invitesUnsub) invitesUnsub();
+
+    invitesUnsub = onSnapshot(collection(db, "invites"), (snap) => {
+
+        snap.forEach(docSnap => {
+
+            const i = docSnap.data();
+            const id = docSnap.id;
+
+            if (i.to !== uid || i.status !== "pending") return;
+
+            if (isExpired(i)) {
+                updateDoc(doc(db, "invites", id), { status: "expired" });
+                return;
+            }
+
+            showInviteUI(id, i);
+        });
+    });
+}
+
+function showInviteUI(id, invite) {
+
+    if (document.getElementById("invite-"+id)) return;
+
+    const box = document.createElement("div");
+    box.id = "invite-"+id;
+    box.className = "invite-popup";
+
+    box.innerHTML = `
+        <p>🎮 ${invite.fromName}</p>
+        <button class="a">Accept</button>
+        <button class="d">Decline</button>
+    `;
+
+    document.body.appendChild(box);
+
+    box.querySelector(".a").onclick = async () => {
+        await acceptInvite(id, invite);
+        box.remove();
+    };
+
+    box.querySelector(".d").onclick = async () => {
+        await declineInvite(id);
+        box.remove();
+    };
+
+    setTimeout(()=>box.remove(),30000);
+}
+
+async function acceptInvite(id, i) {
+
+    const room = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await setDoc(doc(db,"rooms",room),{
+        creator:{id:i.from,name:i.fromName},
+        opponent:{id:i.to,name:i.toName},
+        turn:i.from,
+        status:"playing",
+        board:initBoard()
     });
 
-    if (found) {
-        joinRoom(found);
-    } else {
-        const uid = Math.floor(100000 + Math.random() * 900000).toString();
+    await updateDoc(doc(db,"invites",id),{status:"accepted"});
 
-        await setDoc(doc(db, "rooms", uid), {
-            roomUID: uid,
-            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-            opponent: { id: "bot", name: "🤖 BOT" },
-            status: "playing",
-            type: "public",
-            password: null,
-            turn: auth.currentUser.uid,
-            board: initFanoronaBoard(),
-            createdAt: serverTimestamp()
-        });
+    enterGame(room);
+}
 
-        myRole = "creator";
-        enterGameView(uid);
-    }
-};
+async function declineInvite(id){
+    await updateDoc(doc(db,"invites",id),{status:"declined"});
+}
 
 // ================= LOBBY =================
 function initLobby() {
 
-    onSnapshot(collection(db, "rooms"), (snapshot) => {
-        const div = document.getElementById('rooms-list-dynamic');
-        div.innerHTML = "";
+    onSnapshot(collection(db,"rooms"),(snap)=>{
 
-        snapshot.forEach(docu => {
-            const r = docu.data();
+        const div = document.getElementById("rooms-list-dynamic");
+        div.innerHTML="";
 
-            if (r.status !== "finished") {
-                const card = document.createElement('div');
-                card.className = "room-item animate-pop";
-
-                card.innerHTML = `
-                    <span>🏠 ${docu.id} ${r.type === "private" ? "🔒" : "🌐"}</span>
-                    <button onclick="joinRoom('${docu.id}')">Hiditra</button>
-                `;
-
-                div.appendChild(card);
-            }
+        snap.forEach(d=>{
+            const el = document.createElement("div");
+            el.innerHTML = `${d.id} <button onclick="joinRoom('${d.id}')">Join</button>`;
+            div.appendChild(el);
         });
-    });
-
-    onSnapshot(collection(db, "users"), (snapshot) => {
-        const div = document.getElementById('players-list-dynamic');
-        div.innerHTML = "";
-
-        snapshot.forEach(pDoc => {
-            const p = pDoc.data();
-
-            if (p.online && pDoc.id !== auth.currentUser.uid) {
-                const el = document.createElement('div');
-                el.className = "player-item";
-                el.dataset.id = pDoc.id;
-                el.dataset.name = p.name;
-
-                el.innerHTML = `
-                    <img src="${p.avatar}" width="30">
-                    <span>${p.name}</span>
-                `;
-
-                div.appendChild(el);
-            }
-        });
-
-        initPlayerClick();
     });
 }
 
-// ================= CREATE ROOM =================
-document.getElementById('btn-confirm-create').onclick = async () => {
+// ================= JOIN =================
+window.joinRoom = async (id)=>{
 
-    const id = document.getElementById('room-uid-input').value.trim();
-    const type = document.getElementById('room-type')?.value || "public";
-    const password = document.getElementById('room-password')?.value.trim();
-
-    if (!id) return alert("Ampidiro ny anaran'ny efitra!");
-    if (type === "private" && !password) return alert("Ampidiro ny teny miafina!");
-
-    await setDoc(doc(db, "rooms", id), {
-        roomUID: id,
-        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-        opponent: null,
-        status: "waiting",
-        type: type,
-        password: type === "private" ? password : null,
-        turn: auth.currentUser.uid,
-        board: initFanoronaBoard(),
-        createdAt: serverTimestamp()
+    await updateDoc(doc(db,"rooms",id),{
+        opponent:{id:auth.currentUser.uid,name:"Player"},
+        status:"playing"
     });
 
-    myRole = "creator";
-    document.getElementById('modal-create').classList.add('hidden');
-    enterGameView(id);
-};
-
-// ================= JOIN ROOM =================
-window.joinRoom = async (roomId) => {
-
-    const snap = await getDoc(doc(db, "rooms", roomId));
-    const room = snap.data();
-
-    if (!room) return alert("Tsy misy io efitra io");
-
-    if (room.type === "private") {
-        const input = prompt("Ampidiro ny teny miafina:");
-        if (input !== room.password) return alert("Diso ny teny miafina!");
-    }
-
-    await updateDoc(doc(db, "rooms", roomId), {
-        opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-        status: "playing"
-    });
-
-    myRole = "opponent";
-    enterGameView(roomId);
+    enterGame(id);
 };
 
 // ================= GAME =================
-function enterGameView(roomId) {
-    currentRoomId = roomId;
+function enterGame(id){
+
+    currentRoomId = id;
 
     document.getElementById('lobby-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
 
-    onSnapshot(doc(db, "rooms", roomId), (snap) => {
-        const game = snap.data();
-        renderGameBoard(game);
+    onSnapshot(doc(db,"rooms",id),(snap)=>{
 
-        if (game.turn === "bot") {
-            botPlay(game);
+        const game = snap.data();
+        render(game);
+
+        if(game.winner){
+            alert("Winner: "+game.winner);
+            return;
         }
+
+        if(game.turn==="bot") botPlay(game);
     });
 }
 
 // ================= BOARD =================
-function initFanoronaBoard() {
-    let board = [];
+function initBoard(){
 
-    for (let y = 0; y < 5; y++) {
-        for (let x = 0; x < 9; x++) {
-            let value = 0;
+    let b=[];
 
-            if (y < 2) value = 1;
-            else if (y > 2) value = 2;
-            else value = (x % 2 === 0) ? 1 : 2;
-
-            board.push({ x, y, value });
+    for(let y=0;y<5;y++){
+        for(let x=0;x<9;x++){
+            let v=0;
+            if(y<2)v=1;
+            else if(y>2)v=2;
+            b.push({x,y,value:v});
         }
     }
 
-    return board;
+    return b;
 }
 
 // ================= RENDER =================
-function renderGameBoard(game) {
-    const grid = document.getElementById('fanorona-grid');
-    grid.innerHTML = "";
+function render(game){
 
-    game.board.forEach(cell => {
-        const div = document.createElement('div');
-        div.className = "grid-spot";
+    const grid=document.getElementById("fanorona-grid");
+    grid.innerHTML="";
 
-        // --- FANAMPINY: Highlight selection ---
-        if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) {
-            div.style.background = "rgba(255, 215, 0, 0.4)"; 
-            div.style.borderRadius = "50%";
+    game.board.forEach(cell=>{
+
+        const div=document.createElement("div");
+        div.className="grid-spot";
+
+        if(selectedCell && selectedCell.x===cell.x && selectedCell.y===cell.y){
+            div.style.background="yellow";
         }
 
-        if (cell.value !== 0) {
-            const stone = document.createElement('div');
-            stone.className = `stone ${cell.value === 1 ? 'black' : 'white'}`;
-            div.appendChild(stone);
+        if(cell.value){
+            const s=document.createElement("div");
+            s.className=cell.value===1?"black":"white";
+            div.appendChild(s);
         }
 
-        div.onclick = () => handleCellClick(cell, game);
-
+        addClick(div,()=>move(cell,game));
         grid.appendChild(div);
     });
 }
 
 // ================= MOVE =================
-function handleCellClick(cell, game) {
+async function move(cell,game){
 
-    if (game.turn !== auth.currentUser.uid) return;
+    if(game.turn!==auth.currentUser.uid) return;
 
-    if (!selectedCell) {
-        if (cell.value !== 0) {
-            // Tsy mahazo mikitika vato fahavalo
-            const myVal = (game.creator.id === auth.currentUser.uid) ? 1 : 2;
-            if (cell.value === myVal) {
-                selectedCell = cell;
-                renderGameBoard(game); // Refresh mba hiseho ny highlight
-            }
+    const my = game.creator.id===auth.currentUser.uid?1:2;
+    const enemy = my===1?2:1;
+
+    if(!selectedCell){
+        if(cell.value===my){
+            selectedCell=cell;
+            render(game);
         }
         return;
     }
 
-    const dx = Math.abs(cell.x - selectedCell.x);
-    const dy = Math.abs(cell.y - selectedCell.y);
+    let dx=cell.x-selectedCell.x;
+    let dy=cell.y-selectedCell.y;
 
-    if (dx <= 1 && dy <= 1 && cell.value === 0) {
+    if(Math.abs(dx)<=1 && Math.abs(dy)<=1 && cell.value===0){
 
-        // --- FANAMPINY: Capture Logic (Basic) ---
-        // Ity no mampihena ny vaton'ny fahavalo raha misy "Approach"
-        let currentBoard = [...game.board];
-        const myValue = selectedCell.value;
-        const opponentValue = (myValue === 1) ? 2 : 1;
+        let b=cloneBoard(game.board);
 
-        // Fikirakirana ny board
-        currentBoard.forEach(c => {
-            if (c.x === selectedCell.x && c.y === selectedCell.y) c.value = 0;
-            if (c.x === cell.x && c.y === cell.y) c.value = myValue;
+        getCell(b,selectedCell.x,selectedCell.y).value=0;
+        getCell(b,cell.x,cell.y).value=my;
+
+        let x=cell.x+dx,y=cell.y+dy;
+
+        while(true){
+            let t=getCell(b,x,y);
+            if(t && t.value===enemy){
+                t.value=0;
+                x+=dx;y+=dy;
+            }else break;
+        }
+
+        selectedCell=null;
+
+        const win=checkWin(b);
+
+        await updateDoc(doc(db,"rooms",currentRoomId),{
+            board:b,
+            turn:win?"end":"bot",
+            winner:win||null
         });
 
-        // Ohatra fohy amin'ny fihinanana (Approach kely)
-        const dirX = cell.x - selectedCell.x;
-        const dirY = cell.y - selectedCell.y;
-        const nextX = cell.x + dirX;
-        const nextY = cell.y + dirY;
-
-        currentBoard.forEach(c => {
-            if (c.x === nextX && c.y === nextY && c.value === opponentValue) {
-                c.value = 0; // Hohanina ny vato manaraka raha Approach
-            }
-        });
-
-        selectedCell = null;
-
-        const nextTurn = (game.turn === game.creator.id)
-            ? game.opponent?.id || "bot"
-            : game.creator.id;
-
-        updateDoc(doc(db, "rooms", currentRoomId), {
-            board: currentBoard,
-            turn: nextTurn
-        });
-
-    } else {
-        selectedCell = null;
-        renderGameBoard(game);
+    }else{
+        selectedCell=null;
     }
 }
-// ================= UTILS =================
 
-// clone sécurisé (VERY IMPORTANT Firebase)
-function cloneBoard(board) {
-    return JSON.parse(JSON.stringify(board));
+// ================= BOT LEVEL 3 =================
+function botPlay(game){
+
+    setTimeout(async()=>{
+
+        let b=cloneBoard(game.board);
+        let best=null,score=-999;
+
+        b.filter(c=>c.value===2).forEach(p=>{
+
+            for(let dx=-1;dx<=1;dx++){
+                for(let dy=-1;dy<=1;dy++){
+
+                    if(!dx&&!dy) continue;
+
+                    let t=getCell(b,p.x+dx,p.y+dy);
+                    if(!t||t.value!==0) continue;
+
+                    let temp=cloneBoard(b);
+
+                    getCell(temp,p.x,p.y).value=0;
+                    getCell(temp,p.x+dx,p.y+dy).value=2;
+
+                    let s=0,x=p.x+dx+dx,y=p.y+dy+dy;
+
+                    while(true){
+                        let c=getCell(temp,x,y);
+                        if(c&&c.value===1){
+                            s++;x+=dx;y+=dy;
+                        }else break;
+                    }
+
+                    if(s>score){
+                        score=s;
+                        best={p,dx,dy};
+                    }
+                }
+            }
+        });
+
+        if(!best) return;
+
+        let nx=best.p.x+best.dx;
+        let ny=best.p.y+best.dy;
+
+        getCell(b,best.p.x,best.p.y).value=0;
+        getCell(b,nx,ny).value=2;
+
+        await updateDoc(doc(db,"rooms",currentRoomId),{
+            board:b,
+            turn:game.creator.id
+        });
+
+    },500);
 }
 
-// check cell
-function getCell(board, x, y) {
-    return board.find(c => c.x === x && c.y === y);
-}
+// ================= WIN =================
+function checkWin(b){
 
-// ================= WIN SYSTEM =================
-function checkWin(board) {
+    const dirs=[[1,0],[0,1],[1,1],[1,-1]];
 
-    const p1 = board.filter(c => c.value === 1).length;
-    const p2 = board.filter(c => c.value === 2).length;
+    for(let c of b){
+        if(!c.value) continue;
 
-    if (p1 === 0) return "BOT";
-    if (p2 === 0) return "PLAYER";
+        for(let[dX,dY] of dirs){
 
-    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+            let count=1;
 
-    for (let c of board) {
-        if (c.value === 0) continue;
-
-        for (let [dx,dy] of dirs) {
-
-            let count = 1;
-
-            for (let i=1;i<3;i++) {
-                let n = getCell(board, c.x + dx*i, c.y + dy*i);
-                if (n && n.value === c.value) count++;
+            for(let i=1;i<3;i++){
+                let n=getCell(b,c.x+dX*i,c.y+dY*i);
+                if(n&&n.value===c.value) count++;
             }
 
-            if (count >= 3) {
-                return c.value === 1 ? "PLAYER" : "BOT";
+            if(count>=3){
+                return c.value===1?"PLAYER":"BOT";
             }
         }
     }
 
     return null;
 }
-
-// ================= RENDER (IMPROVED) =================
-function renderGameBoard(game) {
-    const grid = document.getElementById('fanorona-grid');
-    grid.innerHTML = "";
-
-    game.board.forEach(cell => {
-        const div = document.createElement('div');
-        div.className = "grid-spot";
-
-        // highlight
-        if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) {
-            div.style.background = "rgba(255,215,0,0.4)";
-        }
-
-        if (cell.value !== 0) {
-            const stone = document.createElement('div');
-            stone.className = `stone ${cell.value === 1 ? 'black' : 'white'}`;
-            div.appendChild(stone);
-        }
-
-        // PC + MOBILE
-        div.onclick = () => handleCellClick(cell, game);
-        div.ontouchstart = () => handleCellClick(cell, game);
-
-        grid.appendChild(div);
-    });
-}
-
-// ================= MOVE SYSTEM =================
-async function handleCellClick(cell, game) {
-
-    if (game.turn !== auth.currentUser.uid) return;
-
-    const myVal = (game.creator.id === auth.currentUser.uid) ? 1 : 2;
-    const enemy = myVal === 1 ? 2 : 1;
-
-    // SELECT
-    if (!selectedCell) {
-        if (cell.value === myVal) {
-            selectedCell = cell;
-            renderGameBoard(game);
-        }
-        return;
-    }
-
-    const dx = cell.x - selectedCell.x;
-    const dy = cell.y - selectedCell.y;
-
-    // VALID MOVE
-    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && cell.value === 0) {
-
-        let board = cloneBoard(game.board);
-
-        // MOVE
-        getCell(board, selectedCell.x, selectedCell.y).value = 0;
-        getCell(board, cell.x, cell.y).value = myVal;
-
-        // ================= CAPTURE SYSTEM (PLUS) =================
-        let x = cell.x + dx;
-        let y = cell.y + dy;
-
-        let captured = 0;
-
-        while (true) {
-            let target = getCell(board, x, y);
-            if (target && target.value === enemy) {
-                target.value = 0;
-                captured++;
-                x += dx;
-                y += dy;
-            } else break;
-        }
-
-        // ================= DEFENSE LOGIC =================
-        // Raha tsy misy capture dia mbola valide ihany
-
-        selectedCell = null;
-
-        const winner = checkWin(board);
-
-        const nextTurn = winner
-            ? "end"
-            : (game.turn === game.creator.id ? game.opponent?.id || "bot" : game.creator.id);
-
-        await updateDoc(doc(db, "rooms", currentRoomId), {
-            board: board,
-            turn: nextTurn,
-            winner: winner || null
-        });
-
-    } else {
-        selectedCell = null;
-        renderGameBoard(game);
-    }
-}
-
-// ================= BOT AI (SMARTER) =================
-function botPlay(game) {
-
-    setTimeout(async () => {
-
-        let board = cloneBoard(game.board);
-
-        let myPieces = board.filter(c => c.value === 2);
-        let enemy = 1;
-
-        let bestMove = null;
-        let bestScore = -999;
-
-        for (let p of myPieces) {
-
-            for (let dx=-1; dx<=1; dx++) {
-                for (let dy=-1; dy<=1; dy++) {
-
-                    if (dx===0 && dy===0) continue;
-
-                    let nx = p.x + dx;
-                    let ny = p.y + dy;
-
-                    let target = getCell(board, nx, ny);
-                    if (!target || target.value !== 0) continue;
-
-                    let temp = cloneBoard(board);
-
-                    // simulate move
-                    getCell(temp, p.x, p.y).value = 0;
-                    getCell(temp, nx, ny).value = 2;
-
-                    // simulate capture
-                    let cx = nx + dx;
-                    let cy = ny + dy;
-                    let score = 0;
-
-                    while (true) {
-                        let t = getCell(temp, cx, cy);
-                        if (t && t.value === enemy) {
-                            t.value = 0;
-                            score++;
-                            cx += dx;
-                            cy += dy;
-                        } else break;
-                    }
-
-                    // choose best move
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMove = { from: p, to: {x:nx,y:ny}, dx, dy };
-                    }
-                }
-            }
-        }
-
-        if (!bestMove) return;
-
-        // APPLY MOVE
-        getCell(board, bestMove.from.x, bestMove.from.y).value = 0;
-        getCell(board, bestMove.to.x, bestMove.to.y).value = 2;
-
-        // APPLY CAPTURE
-        let cx = bestMove.to.x + bestMove.dx;
-        let cy = bestMove.to.y + bestMove.dy;
-
-        while (true) {
-            let t = getCell(board, cx, cy);
-            if (t && t.value === 1) {
-                t.value = 0;
-                cx += bestMove.dx;
-                cy += bestMove.dy;
-            } else break;
-        }
-
-        const winner = checkWin(board);
-
-        await updateDoc(doc(db, "rooms", currentRoomId), {
-            board: board,
-            turn: winner ? "end" : game.creator.id,
-            winner: winner || null
-        });
-
-    }, 600);
-}
-// ================= BOT =================
-function botPlay(game) {
-    setTimeout(() => {
-
-        let myPieces = game.board.filter(c => c.value === 2);
-        let empty = game.board.filter(c => c.value === 0);
-
-        if (!myPieces.length || !empty.length) return;
-
-        // Bot mahay mihetsika mifanakaiky fa tsy mitsambikina
-        let validBotMove = null;
-        for (let p of myPieces) {
-            let targets = empty.filter(e => Math.abs(e.x - p.x) <= 1 && Math.abs(e.y - p.y) <= 1);
-            if (targets.length > 0) {
-                validBotMove = { from: p, to: targets[0] };
-                break;
-            }
-        }
-
-        if (validBotMove) {
-            game.board.forEach(c => {
-                if (c.x === validBotMove.from.x && c.y === validBotMove.from.y) c.value = 0;
-                if (c.x === validBotMove.to.x && c.y === validBotMove.to.y) c.value = 2;
-            });
-
-            updateDoc(doc(db, "rooms", currentRoomId), {
-                board: game.board,
-                turn: game.creator.id
-            });
-        }
-
-    }, 800);
-}
-
-// FANAMARIHANA: Ity kaody ity dia efa nampiana ny fanatsarana nefa nitazona ny fomba fanoratanao rehetra.
