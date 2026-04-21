@@ -6,54 +6,113 @@
     <title>Fanorona Online</title>
 
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<!-- ================= LOGIN ================= -->
 <section id="login-screen" class="screen flex-center">
-    <div class="auth-card glass">
+    <div class="auth-card glass animate-pop">
         <h1 class="logo">FANORONA</h1>
-        <button id="btn-google">Midira amin'ny Google</button>
+        <button id="btn-google" class="btn-anime-google">
+            Midira amin'ny Google
+        </button>
     </div>
 </section>
 
-<!-- LOBBY -->
+<!-- ================= LOBBY ================= -->
 <section id="lobby-screen" class="screen hidden">
-    <aside class="sidebar">
-        <img id="user-avatar">
-        <h3 id="user-name"></h3>
 
-        <button id="btn-create-room">➕ Hamorona</button>
-        <button id="btn-quick-play">⚡ Haingana</button>
+    <!-- SIDEBAR -->
+    <aside class="sidebar glass">
+        <div class="profile">
+            <div class="avatar-glow">
+                <img id="user-avatar">
+            </div>
+            <h3 id="user-name">...</h3>
+        </div>
+
+        <button id="btn-create-room" class="btn-side">➕ Hamorona</button>
+        <button id="btn-quick-play" class="btn-side">⚡ Lalao haingana</button>
     </aside>
 
-    <main>
-        <h3>Rooms</h3>
-        <div id="rooms-list-dynamic"></div>
+    <!-- MAIN -->
+    <main class="main-content">
 
-        <h3>Mpilalao</h3>
-        <div id="players-list-dynamic"></div>
+        <div class="top-fixed glass">
+            <input type="text" placeholder="🔍 Hitady mpilalao">
+            <input type="text" placeholder="🏠 Hitady efitra">
+        </div>
+
+        <div class="content-scroll">
+
+            <!-- ROOMS -->
+            <div class="list-card glass">
+                <h3>🏠 Efitra</h3>
+                <div id="rooms-list-dynamic" class="scroll-area"></div>
+            </div>
+
+            <!-- PLAYERS -->
+            <div class="list-card glass">
+                <h3>👥 Mpilalao</h3>
+                <div id="players-list-dynamic" class="scroll-area"></div>
+            </div>
+
+        </div>
     </main>
 </section>
 
-<!-- GAME -->
-<section id="game-screen" class="hidden">
-    <div id="fanorona-grid"></div>
+<!-- ================= GAME ================= -->
+<section id="game-screen" class="screen hidden flex-center">
+    <div class="game-container glass">
+        <div id="fanorona-grid"></div>
+    </div>
 </section>
 
-<!-- MODAL -->
-<div id="modal-create" class="hidden">
-    <input id="room-uid-input" placeholder="Anaran'ny efitra">
+<!-- ================= PLAYER MENU ================= -->
+<div id="player-menu" class="player-menu hidden">
+    <button id="btn-play-user">🎮 Hilalao miaraka</button>
+    <button id="btn-chat-user">💬 Resaka</button>
+</div>
 
-    <select id="room-type">
-        <option value="public">🌐 Malalaka</option>
-        <option value="private">🔒 Mihidy</option>
-    </select>
+<!-- ================= CHAT ================= -->
+<div id="chat-panel" class="chat-panel hidden">
 
-    <input id="room-password" placeholder="Teny miafina" style="display:none;">
+    <div class="chat-header">
+        <span id="chat-name">Resaka</span>
+        <button id="close-chat">X</button>
+    </div>
 
-    <button id="btn-confirm-create">Hamorona</button>
+    <div id="chat-messages" class="chat-messages"></div>
+
+    <div class="chat-input">
+        <input type="text" id="chat-text" placeholder="Soraty...">
+        <button id="send-chat">Alefa</button>
+    </div>
+
+</div>
+
+<!-- ================= MODAL CREATE ROOM ================= -->
+<div id="modal-create" class="modal hidden">
+    <div class="modal-content glass">
+
+        <span class="close-modal">&times;</span>
+
+        <h3>Hamorona efitra</h3>
+
+        <input id="room-uid-input" placeholder="Anaran'ny efitra">
+
+        <select id="room-type">
+            <option value="public">🌐 Malalaka</option>
+            <option value="private">🔒 Mihidy</option>
+        </select>
+
+        <input id="room-password" placeholder="Teny miafina" style="display:none;">
+
+        <button id="btn-confirm-create">Hamorona</button>
+
+    </div>
 </div>
 
 <script type="module" src="script.js"></script>
