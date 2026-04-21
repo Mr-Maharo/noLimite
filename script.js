@@ -7,14 +7,7 @@ import {
     onSnapshot, serverTimestamp, getDocs, addDoc,
     query, orderBy
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-const btnOpen = document.getElementById('btn-create-room');
 
-if (btnOpen) {
-    btnOpen.onclick = () => {
-        console.log("CLICK OK"); // test
-        document.getElementById('modal-create').classList.remove('hidden');
-    };
-}
 // ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
@@ -40,6 +33,8 @@ onAuthStateChanged(auth, (user) => {
     const login = document.getElementById('login-screen');
     const lobby = document.getElementById('lobby-screen');
 
+    if (!login || !lobby) return;
+
     if (user) {
         login.classList.add('hidden');
         lobby.classList.remove('hidden');
@@ -53,10 +48,110 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// ================= LOGIN =================
-document.getElementById('btn-google').onclick = async () => {
-    await signInWithPopup(auth, provider);
-};
+// ================= DOM READY =================
+window.addEventListener("DOMContentLoaded", () => {
+
+    // LOGIN
+    const btnGoogle = document.getElementById('btn-google');
+    if (btnGoogle) {
+        btnGoogle.onclick = async () => {
+            await signInWithPopup(auth, provider);
+        };
+    }
+
+    // OPEN MODAL
+    const btnOpen = document.getElementById('btn-create-room');
+    const modal = document.getElementById('modal-create');
+    const btnClose = document.querySelector('.close-modal');
+
+    if (btnOpen && modal) {
+        btnOpen.onclick = () => modal.classList.remove('hidden');
+    }
+
+    if (btnClose && modal) {
+        btnClose.onclick = () => modal.classList.add('hidden');
+    }
+
+    // ROOM TYPE
+    const roomType = document.getElementById('room-type');
+    const roomPassword = document.getElementById('room-password');
+
+    if (roomType && roomPassword) {
+        roomType.onchange = () => {
+            if (roomType.value === "private") {
+                roomPassword.style.display = "block";
+            } else {
+                roomPassword.style.display = "none";
+                roomPassword.value = "";
+            }
+        };
+    }
+
+    // QUICK PLAY
+    const btnQuick = document.getElementById('btn-quick-play');
+    if (btnQuick) {
+        btnQuick.onclick = async () => {
+            const snapshot = await getDocs(collection(db, "rooms"));
+            let found = null;
+
+            snapshot.forEach(d => {
+                const r = d.data();
+                if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
+                    found = d.id;
+                }
+            });
+
+            if (found) {
+                joinRoom(found);
+            } else {
+                const uid = "ROOM-" + Math.floor(Math.random() * 9999);
+                await setDoc(doc(db, "rooms", uid), {
+                    roomUID: uid,
+                    creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+                    opponent: null,
+                    status: "waiting",
+                    type: "public",
+                    password: null,
+                    turn: auth.currentUser.uid,
+                    board: initFanoronaBoard(),
+                    createdAt: serverTimestamp()
+                });
+                myRole = "creator";
+                enterGameView(uid);
+            }
+        };
+    }
+
+    // CREATE ROOM
+    const btnCreate = document.getElementById('btn-confirm-create');
+    if (btnCreate) {
+        btnCreate.onclick = async () => {
+
+            const id = document.getElementById('room-uid-input').value.trim();
+            const type = document.getElementById('room-type')?.value || "public";
+            const password = document.getElementById('room-password')?.value.trim() || "";
+
+            if (!id) return alert("Ampidiro ny anaran'ny efitra!");
+            if (type === "private" && !password) return alert("Ampidiro ny teny miafina!");
+
+            await setDoc(doc(db, "rooms", id), {
+                roomUID: id,
+                creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+                opponent: null,
+                status: "waiting",
+                type: type,
+                password: type === "private" ? password : null,
+                turn: auth.currentUser.uid,
+                board: initFanoronaBoard(),
+                createdAt: serverTimestamp()
+            });
+
+            myRole = "creator";
+            document.getElementById('modal-create').classList.add('hidden');
+            enterGameView(id);
+        };
+    }
+});
 
 // ================= SAVE USER =================
 async function saveUserStatus(user, isOnline) {
@@ -88,11 +183,13 @@ async function saveUserStatus(user, isOnline) {
 
 // ================= PROFILE =================
 function updateUIProfile(user) {
-    document.getElementById('user-avatar').src = user.photoURL;
-    document.getElementById('user-name').innerText = user.displayName;
+    const avatar = document.getElementById('user-avatar');
+    const name = document.getElementById('user-name');
+    if (avatar) avatar.src = user.photoURL;
+    if (name) name.innerText = user.displayName;
 }
 
-// ================= PLAYER CLICK (FIX) =================
+// ================= PLAYER CLICK =================
 function initPlayerClick() {
     document.querySelectorAll('.player-item').forEach(el => {
         el.onclick = (e) => {
@@ -111,59 +208,13 @@ function initPlayerClick() {
     });
 }
 
-// ================= ROOM TYPE =================
-const roomType = document.getElementById('room-type');
-const roomPassword = document.getElementById('room-password');
-
-if (roomType) {
-    roomType.onchange = () => {
-        if (roomType.value === "private") {
-            roomPassword.style.display = "block";
-        } else {
-            roomPassword.style.display = "none";
-            roomPassword.value = "";
-        }
-    };
-}
-
-// ================= QUICK PLAY =================
-document.getElementById('btn-quick-play').onclick = async () => {
-    const snapshot = await getDocs(collection(db, "rooms"));
-    let found = null;
-
-    snapshot.forEach(d => {
-        const r = d.data();
-        if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
-            found = d.id;
-        }
-    });
-
-    if (found) {
-        joinRoom(found);
-    } else {
-        const uid = "ROOM-" + Math.floor(Math.random() * 9999);
-        await setDoc(doc(db, "rooms", uid), {
-            roomUID: uid,
-            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-            opponent: null,
-            status: "waiting",
-            type: "public",
-            password: null,
-            turn: auth.currentUser.uid,
-            board: initFanoronaBoard(),
-            createdAt: serverTimestamp()
-        });
-        myRole = "creator";
-        enterGameView(uid);
-    }
-};
-
 // ================= LOBBY =================
 function initLobby() {
 
-    // ROOMS
     onSnapshot(collection(db, "rooms"), (snapshot) => {
         const div = document.getElementById('rooms-list-dynamic');
+        if (!div) return;
+
         div.innerHTML = "";
 
         snapshot.forEach(docu => {
@@ -183,9 +234,10 @@ function initLobby() {
         });
     });
 
-    // PLAYERS
     onSnapshot(collection(db, "users"), (snapshot) => {
         const div = document.getElementById('players-list-dynamic');
+        if (!div) return;
+
         div.innerHTML = "";
 
         snapshot.forEach(pDoc => {
@@ -206,36 +258,9 @@ function initLobby() {
             }
         });
 
-        initPlayerClick(); // ✔️ miasa tsara izao
+        initPlayerClick();
     });
 }
-
-// ================= CREATE ROOM =================
-document.getElementById('btn-confirm-create').onclick = async () => {
-
-    const id = document.getElementById('room-uid-input').value.trim();
-    const type = roomType ? roomType.value : "public";
-    const password = roomPassword ? roomPassword.value.trim() : "";
-
-    if (!id) return alert("Ampidiro ny anaran'ny efitra!");
-    if (type === "private" && !password) return alert("Ampidiro ny teny miafina!");
-
-    await setDoc(doc(db, "rooms", id), {
-        roomUID: id,
-        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-        opponent: null,
-        status: "waiting",
-        type: type,
-        password: type === "private" ? password : null,
-        turn: auth.currentUser.uid,
-        board: initFanoronaBoard(),
-        createdAt: serverTimestamp()
-    });
-
-    myRole = "creator";
-    document.getElementById('modal-create').classList.add('hidden');
-    enterGameView(id);
-};
 
 // ================= JOIN ROOM =================
 window.joinRoom = async (roomId) => {
@@ -262,11 +287,15 @@ window.joinRoom = async (roomId) => {
 // ================= GAME =================
 function enterGameView(roomId) {
     currentRoomId = roomId;
-    document.getElementById('lobby-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden');
+
+    const lobby = document.getElementById('lobby-screen');
+    const game = document.getElementById('game-screen');
+
+    if (lobby) lobby.classList.add('hidden');
+    if (game) game.classList.remove('hidden');
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
-        renderGameBoard(snap.data());
+        if (snap.exists()) renderGameBoard(snap.data());
     });
 }
 
@@ -276,6 +305,8 @@ function initFanoronaBoard() {
 
 function renderGameBoard(game) {
     const grid = document.getElementById('fanorona-grid');
+    if (!grid) return;
+
     grid.innerHTML = "";
 
     game.board.forEach(row => {
