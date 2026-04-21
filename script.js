@@ -4,13 +4,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
     getFirestore, collection, doc, setDoc, getDoc, updateDoc,
-    onSnapshot, serverTimestamp, getDocs, addDoc,
-    query, orderBy
+    onSnapshot, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // ================= CONFIG =================
 const firebaseConfig = {
-    apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
+    apiKey: "AIzaSy...",
     authDomain: "nolimite-29e0b.firebaseapp.com",
     projectId: "nolimite-29e0b",
 };
@@ -22,232 +21,84 @@ const provider = new GoogleAuthProvider();
 
 // ================= VARIABLES =================
 let currentRoomId = null;
-let myRole = null;
 let selectedCell = null;
-
-let mpilalaoVoafidy = null;
-let chatId = null;
-let unsubChat = null;
 
 // ================= AUTH =================
 onAuthStateChanged(auth, (user) => {
-    const login = document.getElementById('login-screen');
-    const lobby = document.getElementById('lobby-screen');
+    if (!user) return;
 
-    if (user) {
-        login.classList.add('hidden');
-        lobby.classList.remove('hidden');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('lobby-screen').classList.remove('hidden');
 
-        updateUIProfile(user);
-        initLobby();
-        saveUserStatus(user, true);
-    } else {
-        login.classList.remove('hidden');
-        lobby.classList.add('hidden');
-    }
+    initLobby();
 });
 
 // ================= LOGIN =================
-document.getElementById('btn-google').onclick = async () => {
-    await signInWithPopup(auth, provider);
+document.getElementById('btn-google').onclick = () => {
+    signInWithPopup(auth, provider);
 };
-
-// ================= SAVE USER =================
-async function saveUserStatus(user, isOnline) {
-    const snapshot = await getDocs(collection(db, "users"));
-    let existing = null;
-
-    snapshot.forEach(docu => {
-        if (docu.data().email === user.email) existing = docu.id;
-    });
-
-    if (existing) {
-        await updateDoc(doc(db, "users", existing), {
-            online: isOnline,
-            lastSeen: serverTimestamp(),
-            name: user.displayName,
-            avatar: user.photoURL
-        });
-    } else {
-        await setDoc(doc(db, "users", user.uid), {
-            name: user.displayName,
-            avatar: user.photoURL,
-            email: user.email,
-            online: isOnline,
-            createdAt: serverTimestamp(),
-            lastSeen: serverTimestamp()
-        });
-    }
-}
-
-// ================= PROFILE =================
-function updateUIProfile(user) {
-    document.getElementById('user-avatar').src = user.photoURL;
-    document.getElementById('user-name').innerText = user.displayName;
-}
-
-// ================= PLAYER CLICK =================
-function initPlayerClick() {
-    document.querySelectorAll('.player-item').forEach(el => {
-        el.onclick = (e) => {
-            mpilalaoVoafidy = {
-                id: el.dataset.id,
-                name: el.dataset.name
-            };
-
-            const menu = document.getElementById('player-menu');
-            if (menu) {
-                menu.style.top = e.clientY + "px";
-                menu.style.left = e.clientX + "px";
-                menu.classList.remove('hidden');
-            }
-        };
-    });
-}
 
 // ================= QUICK PLAY =================
 document.getElementById('btn-quick-play').onclick = async () => {
-    const snapshot = await getDocs(collection(db, "rooms"));
-    let found = null;
 
-    snapshot.forEach(d => {
-        const r = d.data();
-        if (r.status === "waiting" && !r.opponent && !found && r.type !== "private") {
-            found = d.id;
-        }
+    const uid = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await setDoc(doc(db, "rooms", uid), {
+        creator: auth.currentUser.uid,
+        opponent: "bot",
+        turn: auth.currentUser.uid,
+        status: "playing",
+        board: initBoard(),
+        createdAt: serverTimestamp()
     });
 
-    if (found) {
-        joinRoom(found);
-    } else {
-        const uid = Math.floor(100000 + Math.random() * 900000).toString();
-
-        await setDoc(doc(db, "rooms", uid), {
-            roomUID: uid,
-            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-            opponent: { id: "bot", name: "🤖 BOT" },
-            status: "playing",
-            type: "public",
-            password: null,
-            turn: auth.currentUser.uid,
-            board: initFanoronaBoard(),
-            createdAt: serverTimestamp()
-        });
-
-        myRole = "creator";
-        enterGameView(uid);
-    }
+    enterGame(uid);
 };
 
 // ================= LOBBY =================
 function initLobby() {
-
-    onSnapshot(collection(db, "rooms"), (snapshot) => {
+    onSnapshot(collection(db, "rooms"), (snap) => {
         const div = document.getElementById('rooms-list-dynamic');
         div.innerHTML = "";
 
-        snapshot.forEach(docu => {
-            const r = docu.data();
+        snap.forEach(d => {
+            const r = d.data();
 
-            if (r.status !== "finished") {
-                const card = document.createElement('div');
-                card.className = "room-item animate-pop";
-
-                card.innerHTML = `
-                    <span>🏠 ${docu.id} ${r.type === "private" ? "🔒" : "🌐"}</span>
-                    <button onclick="joinRoom('${docu.id}')">Hiditra</button>
-                `;
-
-                div.appendChild(card);
-            }
+            const el = document.createElement('div');
+            el.innerHTML = `
+                ${d.id}
+                <button onclick="joinRoom('${d.id}')">Join</button>
+            `;
+            div.appendChild(el);
         });
-    });
-
-    onSnapshot(collection(db, "users"), (snapshot) => {
-        const div = document.getElementById('players-list-dynamic');
-        div.innerHTML = "";
-
-        snapshot.forEach(pDoc => {
-            const p = pDoc.data();
-
-            if (p.online && pDoc.id !== auth.currentUser.uid) {
-                const el = document.createElement('div');
-                el.className = "player-item";
-                el.dataset.id = pDoc.id;
-                el.dataset.name = p.name;
-
-                el.innerHTML = `
-                    <img src="${p.avatar}" width="30">
-                    <span>${p.name}</span>
-                `;
-
-                div.appendChild(el);
-            }
-        });
-
-        initPlayerClick();
     });
 }
 
-// ================= CREATE ROOM =================
-document.getElementById('btn-confirm-create').onclick = async () => {
-
-    const id = document.getElementById('room-uid-input').value.trim();
-    const type = document.getElementById('room-type')?.value || "public";
-    const password = document.getElementById('room-password')?.value.trim();
-
-    if (!id) return alert("Ampidiro ny anaran'ny efitra!");
-    if (type === "private" && !password) return alert("Ampidiro ny teny miafina!");
-
-    await setDoc(doc(db, "rooms", id), {
-        roomUID: id,
-        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-        opponent: null,
-        status: "waiting",
-        type: type,
-        password: type === "private" ? password : null,
-        turn: auth.currentUser.uid,
-        board: initFanoronaBoard(),
-        createdAt: serverTimestamp()
-    });
-
-    myRole = "creator";
-    document.getElementById('modal-create').classList.add('hidden');
-    enterGameView(id);
-};
-
-// ================= JOIN ROOM =================
-window.joinRoom = async (roomId) => {
-
-    const snap = await getDoc(doc(db, "rooms", roomId));
-    const room = snap.data();
-
-    if (!room) return alert("Tsy misy io efitra io");
-
-    if (room.type === "private") {
-        const input = prompt("Ampidiro ny teny miafina:");
-        if (input !== room.password) return alert("Diso ny teny miafina!");
-    }
-
-    await updateDoc(doc(db, "rooms", roomId), {
-        opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+// ================= JOIN =================
+window.joinRoom = async (id) => {
+    await updateDoc(doc(db, "rooms", id), {
+        opponent: auth.currentUser.uid,
         status: "playing"
     });
-
-    myRole = "opponent";
-    enterGameView(roomId);
+    enterGame(id);
 };
 
-// ================= GAME =================
-function enterGameView(roomId) {
-    currentRoomId = roomId;
+// ================= ENTER GAME =================
+function enterGame(id) {
+    currentRoomId = id;
 
     document.getElementById('lobby-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
 
-    onSnapshot(doc(db, "rooms", roomId), (snap) => {
+    onSnapshot(doc(db, "rooms", id), (snap) => {
         const game = snap.data();
-        renderGameBoard(game);
+
+        render(game);
+
+        if (game.winner) {
+            alert("🏆 Winner: " + game.winner);
+            return;
+        }
 
         if (game.turn === "bot") {
             botPlay(game);
@@ -256,26 +107,24 @@ function enterGameView(roomId) {
 }
 
 // ================= BOARD =================
-function initFanoronaBoard() {
+function initBoard() {
     let board = [];
 
     for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 9; x++) {
-            let value = 0;
 
+            let value = 0;
             if (y < 2) value = 1;
             else if (y > 2) value = 2;
-            else value = (x % 2 === 0) ? 1 : 2;
 
             board.push({ x, y, value });
         }
     }
-
     return board;
 }
 
 // ================= RENDER =================
-function renderGameBoard(game) {
+function render(game) {
     const grid = document.getElementById('fanorona-grid');
     grid.innerHTML = "";
 
@@ -283,119 +132,137 @@ function renderGameBoard(game) {
         const div = document.createElement('div');
         div.className = "grid-spot";
 
-        // --- FANAMPINY: Highlight selection ---
-        if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) {
-            div.style.background = "rgba(255, 215, 0, 0.4)"; 
-            div.style.borderRadius = "50%";
-        }
-
         if (cell.value !== 0) {
             const stone = document.createElement('div');
-            stone.className = `stone ${cell.value === 1 ? 'black' : 'white'}`;
+            stone.className = cell.value === 1 ? "black" : "white";
             div.appendChild(stone);
         }
 
-        div.onclick = () => handleCellClick(cell, game);
-
+        div.onclick = () => move(cell, game);
         grid.appendChild(div);
     });
 }
 
 // ================= MOVE =================
-function handleCellClick(cell, game) {
+function move(cell, game) {
 
     if (game.turn !== auth.currentUser.uid) return;
 
+    const myVal = (game.creator === auth.currentUser.uid) ? 1 : 2;
+    const enemy = myVal === 1 ? 2 : 1;
+
     if (!selectedCell) {
-        if (cell.value !== 0) {
-            // Tsy mahazo mikitika vato fahavalo
-            const myVal = (game.creator.id === auth.currentUser.uid) ? 1 : 2;
-            if (cell.value === myVal) {
-                selectedCell = cell;
-                renderGameBoard(game); // Refresh mba hiseho ny highlight
-            }
-        }
+        if (cell.value === myVal) selectedCell = cell;
         return;
     }
 
-    const dx = Math.abs(cell.x - selectedCell.x);
-    const dy = Math.abs(cell.y - selectedCell.y);
+    let dx = cell.x - selectedCell.x;
+    let dy = cell.y - selectedCell.y;
 
-    if (dx <= 1 && dy <= 1 && cell.value === 0) {
+    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && cell.value === 0) {
 
-        // --- FANAMPINY: Capture Logic (Basic) ---
-        // Ity no mampihena ny vaton'ny fahavalo raha misy "Approach"
-        let currentBoard = [...game.board];
-        const myValue = selectedCell.value;
-        const opponentValue = (myValue === 1) ? 2 : 1;
+        let board = JSON.parse(JSON.stringify(game.board));
 
-        // Fikirakirana ny board
-        currentBoard.forEach(c => {
+        // move
+        board.forEach(c => {
             if (c.x === selectedCell.x && c.y === selectedCell.y) c.value = 0;
-            if (c.x === cell.x && c.y === cell.y) c.value = myValue;
+            if (c.x === cell.x && c.y === cell.y) c.value = myVal;
         });
 
-        // Ohatra fohy amin'ny fihinanana (Approach kely)
-        const dirX = cell.x - selectedCell.x;
-        const dirY = cell.y - selectedCell.y;
-        const nextX = cell.x + dirX;
-        const nextY = cell.y + dirY;
+        // capture
+        let x = cell.x + dx;
+        let y = cell.y + dy;
 
-        currentBoard.forEach(c => {
-            if (c.x === nextX && c.y === nextY && c.value === opponentValue) {
-                c.value = 0; // Hohanina ny vato manaraka raha Approach
-            }
-        });
+        while (true) {
+            let target = board.find(c => c.x === x && c.y === y);
+            if (target && target.value === enemy) {
+                target.value = 0;
+                x += dx;
+                y += dy;
+            } else break;
+        }
 
         selectedCell = null;
 
-        const nextTurn = (game.turn === game.creator.id)
-            ? game.opponent?.id || "bot"
-            : game.creator.id;
+        const winner = checkWin(board);
 
-        updateDoc(doc(db, "rooms", currentRoomId), {
-            board: currentBoard,
-            turn: nextTurn
+        await updateDoc(doc(db, "rooms", currentRoomId), {
+            board: board,
+            turn: winner ? "end" : "bot",
+            winner: winner || null
         });
-
     } else {
         selectedCell = null;
-        renderGameBoard(game);
     }
 }
 
 // ================= BOT =================
 function botPlay(game) {
-    setTimeout(() => {
+    setTimeout(async () => {
 
-        let myPieces = game.board.filter(c => c.value === 2);
-        let empty = game.board.filter(c => c.value === 0);
+        let board = JSON.parse(JSON.stringify(game.board));
 
-        if (!myPieces.length || !empty.length) return;
+        let myPieces = board.filter(c => c.value === 2);
+        let empty = board.filter(c => c.value === 0);
 
-        // Bot mahay mihetsika mifanakaiky fa tsy mitsambikina
-        let validBotMove = null;
         for (let p of myPieces) {
-            let targets = empty.filter(e => Math.abs(e.x - p.x) <= 1 && Math.abs(e.y - p.y) <= 1);
-            if (targets.length > 0) {
-                validBotMove = { from: p, to: targets[0] };
-                break;
+            for (let e of empty) {
+
+                let dx = e.x - p.x;
+                let dy = e.y - p.y;
+
+                if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+
+                    board.forEach(c => {
+                        if (c.x === p.x && c.y === p.y) c.value = 0;
+                        if (c.x === e.x && c.y === e.y) c.value = 2;
+                    });
+
+                    await updateDoc(doc(db, "rooms", currentRoomId), {
+                        board: board,
+                        turn: game.creator
+                    });
+
+                    return;
+                }
             }
         }
 
-        if (validBotMove) {
-            game.board.forEach(c => {
-                if (c.x === validBotMove.from.x && c.y === validBotMove.from.y) c.value = 0;
-                if (c.x === validBotMove.to.x && c.y === validBotMove.to.y) c.value = 2;
-            });
-
-            updateDoc(doc(db, "rooms", currentRoomId), {
-                board: game.board,
-                turn: game.creator.id
-            });
-        }
-
-    }, 800);
+    }, 500);
 }
 
-// FANAMARIHANA: Ity kaody ity dia efa nampiana ny fanatsarana nefa nitazona ny fomba fanoratanao rehetra.
+// ================= WIN =================
+function checkWin(board) {
+
+    const p1 = board.filter(c => c.value === 1).length;
+    const p2 = board.filter(c => c.value === 2).length;
+
+    if (p1 === 0) return "BOT";
+    if (p2 === 0) return "PLAYER";
+
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+
+    for (let c of board) {
+        if (c.value === 0) continue;
+
+        for (let [dx,dy] of dirs) {
+
+            let count = 1;
+
+            for (let i=1;i<3;i++) {
+                let n = board.find(x =>
+                    x.x === c.x + dx*i &&
+                    x.y === c.y + dy*i &&
+                    x.value === c.value
+                );
+                if (n) count++;
+            }
+
+            if (count >= 3) {
+                return c.value === 1 ? "PLAYER" : "BOT";
+            }
+        }
+    }
+
+    return null;
+}
