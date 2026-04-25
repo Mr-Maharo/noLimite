@@ -7,7 +7,6 @@ import {
     onSnapshot, serverTimestamp, getDocs, addDoc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// ================= CONFIG =================
 const firebaseConfig = {
   apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
   authDomain: "nolimite-29e0b.firebaseapp.com",
@@ -24,32 +23,25 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ================= VARIABLES =================
 let currentRoomId = null;
 let selectedCell = null;
-
 let invitesUnsub = null;
 let friendsUnsub = null;
+let gameUnsub = null;
 
-// ================= AUTH =================
 onAuthStateChanged(auth, (user) => {
-
     if (!user) return;
-
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('lobby-screen').classList.remove('hidden');
-
     initLobby();
     initFriends(user.uid);
     initInvites(user.uid);
 });
 
-// ================= LOGIN =================
 document.getElementById('btn-google').onclick = () => {
     signInWithPopup(auth, provider);
 };
 
-// ================= UTILS =================
 function cloneBoard(board) {
     return JSON.parse(JSON.stringify(board));
 }
@@ -59,64 +51,30 @@ function getCell(board, x, y) {
 }
 
 function addClick(el, fn) {
+    if(!el) return;
     el.onclick = fn;
-    el.ontouchstart = fn;
-}
-
-// ================= FRIEND SYSTEM =================
-async function addFriend(friendId, friendName) {
-
-    const myId = auth.currentUser.uid;
-
-    await setDoc(doc(db, "friends", `${myId}_${friendId}`), {
-        users: [myId, friendId],
-        names: [auth.currentUser.displayName, friendName],
-        createdAt: serverTimestamp()
-    });
-
-    await setDoc(doc(db, "friends", `${friendId}_${myId}`), {
-        users: [friendId, myId],
-        names: [friendName, auth.currentUser.displayName],
-        createdAt: serverTimestamp()
-    });
 }
 
 function initFriends(uid) {
-
     if (friendsUnsub) friendsUnsub();
-
     friendsUnsub = onSnapshot(collection(db, "friends"), (snap) => {
-
         const list = document.getElementById("friends-list");
         if (!list) return;
-
         list.innerHTML = "";
-
         snap.forEach(docSnap => {
             const f = docSnap.data();
-
             if (f.users.includes(uid)) {
-
                 const i = f.users[0] === uid ? 1 : 0;
-
                 const el = document.createElement("div");
-                el.innerHTML = `
-                    👤 ${f.names[i]}
-                    <button onclick="sendInvite('${f.users[i]}','${f.names[i]}')">Invite</button>
-                `;
+                el.innerHTML = `👤 ${f.names[i]} <button id="inv-${f.users[i]}">Invite</button>`;
                 list.appendChild(el);
+                addClick(el.querySelector('button'), () => sendInvite(f.users[i], f.names[i]));
             }
         });
     });
 }
 
-// ================= INVITE SYSTEM =================
-function isExpired(invite) {
-    return Date.now() - invite.createdAt > 30000;
-}
-
 async function sendInvite(id, name) {
-
     await addDoc(collection(db, "invites"), {
         from: auth.currentUser.uid,
         fromName: auth.currentUser.displayName,
@@ -128,299 +86,186 @@ async function sendInvite(id, name) {
 }
 
 function initInvites(uid) {
-
     if (invitesUnsub) invitesUnsub();
-
     invitesUnsub = onSnapshot(collection(db, "invites"), (snap) => {
-
         snap.forEach(docSnap => {
-
             const i = docSnap.data();
-            const id = docSnap.id;
-
             if (i.to !== uid || i.status !== "pending") return;
-
-            if (isExpired(i)) {
-                updateDoc(doc(db, "invites", id), { status: "expired" });
+            if (Date.now() - i.createdAt > 30000) {
+                updateDoc(doc(db, "invites", docSnap.id), { status: "expired" });
                 return;
             }
-
-            showInviteUI(id, i);
+            showInviteUI(docSnap.id, i);
         });
     });
 }
 
 function showInviteUI(id, invite) {
-
     if (document.getElementById("invite-"+id)) return;
-
     const box = document.createElement("div");
     box.id = "invite-"+id;
     box.className = "invite-popup";
-
-    box.innerHTML = `
-        <p>🎮 ${invite.fromName}</p>
-        <button class="a">Accept</button>
-        <button class="d">Decline</button>
-    `;
-
+    box.innerHTML = `<p>🎮 ${invite.fromName}</p><button class="a">Accept</button><button class="d">Decline</button>`;
     document.body.appendChild(box);
 
     box.querySelector(".a").onclick = async () => {
         await acceptInvite(id, invite);
         box.remove();
     };
-
     box.querySelector(".d").onclick = async () => {
-        await declineInvite(id);
+        await updateDoc(doc(db,"invites",id),{status:"declined"});
         box.remove();
     };
-
-    setTimeout(()=>box.remove(),30000);
+    setTimeout(()=>box.remove(), 30000);
 }
 
 async function acceptInvite(id, i) {
-
     const room = Math.floor(100000 + Math.random() * 900000).toString();
-
     await setDoc(doc(db,"rooms",room),{
-        creator:{id:i.from,name:i.fromName},
-        opponent:{id:i.to,name:i.toName},
+        creator:{id:i.from, name:i.fromName},
+        opponent:{id:i.to, name:i.toName},
         turn:i.from,
         status:"playing",
         board:initBoard()
     });
-
     await updateDoc(doc(db,"invites",id),{status:"accepted"});
-
     enterGame(room);
 }
 
-async function declineInvite(id){
-    await updateDoc(doc(db,"invites",id),{status:"declined"});
-}
-
-// ================= LOBBY =================
 function initLobby() {
-
     onSnapshot(collection(db,"rooms"),(snap)=>{
-
         const div = document.getElementById("rooms-list-dynamic");
+        if(!div) return;
         div.innerHTML="";
-
         snap.forEach(d=>{
             const el = document.createElement("div");
-            el.innerHTML = `${d.id} <button onclick="joinRoom('${d.id}')">Join</button>`;
+            el.innerHTML = `${d.id} <button id="join-${d.id}">Join</button>`;
             div.appendChild(el);
+            addClick(el.querySelector('button'), () => window.joinRoom(d.id));
         });
     });
 }
 
-// ================= JOIN =================
 window.joinRoom = async (id)=>{
-
     await updateDoc(doc(db,"rooms",id),{
-        opponent:{id:auth.currentUser.uid,name:"Player"},
+        opponent:{id:auth.currentUser.uid, name:auth.currentUser.displayName || "Player"},
         status:"playing"
     });
-
     enterGame(id);
 };
 
-// ================= GAME =================
 function enterGame(id){
-
     currentRoomId = id;
-
     document.getElementById('lobby-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
-
-    onSnapshot(doc(db,"rooms",id),(snap)=>{
-
+    if(gameUnsub) gameUnsub();
+    gameUnsub = onSnapshot(doc(db,"rooms",id),(snap)=>{
         const game = snap.data();
+        if(!game) return;
         render(game);
-
-        if(game.winner){
-            alert("Winner: "+game.winner);
-            return;
-        }
-
-        if(game.turn==="bot") botPlay(game);
+        if(game.winner) { alert("Winner: "+game.winner); return; }
+        if(game.turn === "bot") botPlay(game);
     });
 }
 
-// ================= BOARD =================
 function initBoard(){
-
     let b=[];
-
     for(let y=0;y<5;y++){
         for(let x=0;x<9;x++){
             let v=0;
-            if(y<2)v=1;
-            else if(y>2)v=2;
+            if(y<2) v=1; else if(y>2) v=2;
             b.push({x,y,value:v});
         }
     }
-
     return b;
 }
 
-// ================= RENDER =================
 function render(game){
-
     const grid=document.getElementById("fanorona-grid");
+    if(!grid) return;
     grid.innerHTML="";
-
     game.board.forEach(cell=>{
-
         const div=document.createElement("div");
         div.className="grid-spot";
-
-        if(selectedCell && selectedCell.x===cell.x && selectedCell.y===cell.y){
-            div.style.background="yellow";
-        }
-
+        if(selectedCell && selectedCell.x===cell.x && selectedCell.y===cell.y) div.style.background="yellow";
         if(cell.value){
             const s=document.createElement("div");
             s.className=cell.value===1?"black":"white";
             div.appendChild(s);
         }
-
         addClick(div,()=>move(cell,game));
         grid.appendChild(div);
     });
 }
 
-// ================= MOVE =================
 async function move(cell,game){
-
     if(game.turn!==auth.currentUser.uid) return;
-
     const my = game.creator.id===auth.currentUser.uid?1:2;
     const enemy = my===1?2:1;
 
     if(!selectedCell){
-        if(cell.value===my){
-            selectedCell=cell;
-            render(game);
-        }
+        if(cell.value===my){ selectedCell=cell; render(game); }
         return;
     }
 
-    let dx=cell.x-selectedCell.x;
-    let dy=cell.y-selectedCell.y;
-
+    let dx=cell.x-selectedCell.x, dy=cell.y-selectedCell.y;
     if(Math.abs(dx)<=1 && Math.abs(dy)<=1 && cell.value===0){
-
         let b=cloneBoard(game.board);
-
         getCell(b,selectedCell.x,selectedCell.y).value=0;
         getCell(b,cell.x,cell.y).value=my;
-
-        let x=cell.x+dx,y=cell.y+dy;
-
+        let x=cell.x+dx, y=cell.y+dy;
         while(true){
             let t=getCell(b,x,y);
-            if(t && t.value===enemy){
-                t.value=0;
-                x+=dx;y+=dy;
-            }else break;
+            if(t && t.value===enemy){ t.value=0; x+=dx; y+=dy; } else break;
         }
-
+        const win = checkWin(b);
+        const next = (game.opponent.id === "bot" || !game.opponent.id) ? "bot" : (game.turn === game.creator.id ? game.opponent.id : game.creator.id);
         selectedCell=null;
-
-        const win=checkWin(b);
-
         await updateDoc(doc(db,"rooms",currentRoomId),{
             board:b,
-            turn:win?"end":"bot",
-            winner:win||null
+            turn: win ? "end" : next,
+            winner: win
         });
-
-    }else{
-        selectedCell=null;
-    }
+    } else { selectedCell=null; render(game); }
 }
 
-// ================= BOT LEVEL 3 =================
 function botPlay(game){
-
     setTimeout(async()=>{
-
         let b=cloneBoard(game.board);
-        let best=null,score=-999;
-
+        let best=null, score=-1;
         b.filter(c=>c.value===2).forEach(p=>{
-
             for(let dx=-1;dx<=1;dx++){
                 for(let dy=-1;dy<=1;dy++){
-
-                    if(!dx&&!dy) continue;
-
+                    if(!dx && !dy) continue;
                     let t=getCell(b,p.x+dx,p.y+dy);
-                    if(!t||t.value!==0) continue;
-
-                    let temp=cloneBoard(b);
-
-                    getCell(temp,p.x,p.y).value=0;
-                    getCell(temp,p.x+dx,p.y+dy).value=2;
-
-                    let s=0,x=p.x+dx+dx,y=p.y+dy+dy;
-
-                    while(true){
-                        let c=getCell(temp,x,y);
-                        if(c&&c.value===1){
-                            s++;x+=dx;y+=dy;
-                        }else break;
-                    }
-
-                    if(s>score){
-                        score=s;
-                        best={p,dx,dy};
+                    if(t && t.value===0){
+                        let s=0, x=p.x+dx+dx, y=p.y+dy+dy;
+                        while(true){
+                            let c=getCell(b,x,y);
+                            if(c && c.value===1){ s++; x+=dx; y+=dy; } else break;
+                        }
+                        if(s>score){ score=s; best={p,dx,dy}; }
                     }
                 }
             }
         });
-
         if(!best) return;
-
-        let nx=best.p.x+best.dx;
-        let ny=best.p.y+best.dy;
-
-        getCell(b,best.p.x,best.p.y).value=0;
-        getCell(b,nx,ny).value=2;
-
-        await updateDoc(doc(db,"rooms",currentRoomId),{
-            board:b,
-            turn:game.creator.id
-        });
-
+        let nb=cloneBoard(game.board);
+        getCell(nb,best.p.x,best.p.y).value=0;
+        getCell(nb,best.p.x+best.dx,best.p.y+best.dy).value=2;
+        let x=best.p.x+best.dx+best.dx, y=best.p.y+best.dy+best.dy;
+        while(true){
+            let c=getCell(nb,x,y);
+            if(c && c.value===1){ c.value=0; x+=best.dx; y+=best.dy; } else break;
+        }
+        await updateDoc(doc(db,"rooms",currentRoomId),{ board:nb, turn:game.creator.id });
     },500);
 }
 
-// ================= WIN =================
 function checkWin(b){
-
-    const dirs=[[1,0],[0,1],[1,1],[1,-1]];
-
-    for(let c of b){
-        if(!c.value) continue;
-
-        for(let[dX,dY] of dirs){
-
-            let count=1;
-
-            for(let i=1;i<3;i++){
-                let n=getCell(b,c.x+dX*i,c.y+dY*i);
-                if(n&&n.value===c.value) count++;
-            }
-
-            if(count>=3){
-                return c.value===1?"PLAYER":"BOT";
-            }
-        }
-    }
-
+    const v1 = b.filter(c=>c.value===1).length;
+    const v2 = b.filter(c=>c.value===2).length;
+    if(v1 === 0) return "BOT/WHITE";
+    if(v2 === 0) return "PLAYER/BLACK";
     return null;
 }
