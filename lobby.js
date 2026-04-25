@@ -15,7 +15,7 @@ export function initLobby(joinRoom) {
                 ${doc.id}
                 <button onclick="window.joinRoom('${doc.id}')">Join</button>
             `;
-
+ 
             div.appendChild(el);
         });
     });
