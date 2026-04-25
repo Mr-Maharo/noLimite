@@ -15,18 +15,19 @@ export function enterGame(roomId) {
 
     currentRoomId = roomId;
 
-    onSnapshot(doc(db, "rooms", roomId), async (snap) => {
+ onSnapshot(doc(db, "rooms", roomId), (snap) => {
 
-        const game = snap.data();
+    if (!snap.exists()) return;
 
-        renderBoard(game, handleMove);
+    const game = snap.data();
 
-        if (game.turn === "bot") {
-            await botPlay(game, db, currentRoomId);
-        }
-    });
-}
+    if (!game || !game.board) {
+        console.warn("Room tsy mbola ready");
+        return;
+    }
 
+    renderBoard(game);
+});
 async function handleMove(cell, game) {
     console.log("move...");
 }
