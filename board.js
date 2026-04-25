@@ -7,27 +7,24 @@ export function renderBoard(game, onClick) {
     const grid = document.getElementById("fanorona-grid");
     grid.innerHTML = "";
 
-    game.board.forEach(cell => {
+ export function renderBoard(game) {
 
+    if (!game?.board) return;
+
+    const grid = document.getElementById("fanorona-grid");
+    if (!grid) return;
+
+    grid.innerHTML = "";
+
+    game.board.forEach(cell => {
         const div = document.createElement("div");
         div.className = "grid-spot";
-
-        if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) {
-            div.style.background = "gold";
-        }
-
-        if (cell.value !== 0) {
-            const stone = document.createElement("div");
-            stone.className = cell.value === 1 ? "black" : "white";
-            div.appendChild(stone);
-        }
-
-        div.onclick = () => onClick(cell, game);
-        div.ontouchstart = () => onClick(cell, game);
 
         grid.appendChild(div);
     });
 }
+
+    
 
 export function initBoard() {
     let board = [];
