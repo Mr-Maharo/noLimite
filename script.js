@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, serverTimestamp, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, serverTimestamp, addDoc, query, orderBy, where, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // ================= CONFIG =================
 const firebaseConfig = {
@@ -18,7 +18,7 @@ const provider = new GoogleAuthProvider();
 let currentRoomId = null;
 let selectedCell = null;
 
-// ================= GLOBAL FUNCTIONS =================
+// ================= GLOBAL FUNCTIONS (FOR HTML) =================
 window.joinRoom = async (id) => {
     await updateDoc(doc(db, "rooms", id), {
         opponent: { id: auth.currentUser.uid, name: auth.currentUser.displayName, avatar: auth.currentUser.photoURL },
@@ -29,12 +29,8 @@ window.joinRoom = async (id) => {
 
 window.sendInvite = async (id, name) => {
     await addDoc(collection(db, "invites"), {
-        from: auth.currentUser.uid,
-        fromName: auth.currentUser.displayName,
-        to: id,
-        toName: name,
-        status: "pending",
-        createdAt: Date.now()
+        from: auth.currentUser.uid, fromName: auth.currentUser.displayName,
+        to: id, toName: name, status: "pending", createdAt: Date.now()
     });
     alert("Fanasana nalefa ho an'i " + name);
 };
@@ -44,17 +40,14 @@ window.acceptInvite = async (id, i) => {
     await setDoc(doc(db, "rooms", roomId), {
         creator: { id: i.from, name: i.fromName },
         opponent: { id: i.to, name: i.toName },
-        turn: i.from,
-        status: "playing",
-        board: initBoard(),
-        winner: null
+        turn: i.from, status: "playing", board: initBoard(), winner: null
     });
     await updateDoc(doc(db, "invites", id), { status: "accepted" });
     document.getElementById("invite-" + id)?.remove();
     enterGame(roomId);
 };
 
-// ================= AUTH & PRESENCE =================
+// ================= AUTH & UI =================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         document.getElementById('login-screen').classList.add('hidden');
@@ -63,11 +56,8 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('user-avatar').src = user.photoURL;
 
         await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            name: user.displayName,
-            avatar: user.photoURL,
-            status: "online",
-            lastSeen: serverTimestamp()
+            uid: user.uid, name: user.displayName, avatar: user.photoURL,
+            status: "online", lastSeen: serverTimestamp()
         }, { merge: true });
 
         initLobby();
@@ -81,21 +71,41 @@ onAuthStateChanged(auth, async (user) => {
 document.getElementById('btn-google').onclick = () => signInWithPopup(auth, provider);
 document.getElementById('btn-create-room').onclick = () => document.getElementById('modal-create').classList.remove('hidden');
 
-document.getElementById('btn-confirm-create').onclick = async () => {
-    const roomName = document.getElementById('room-uid-input').value || "Lalao";
-    const roomId = roomName.replace(/\s+/g, '_') + "_" + Math.floor(Math.random() * 1000);
-    await setDoc(doc(db, "rooms", roomId), {
-        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
-        status: "waiting",
-        turn: auth.currentUser.uid,
-        board: initBoard(),
-        winner: null
-    });
-    document.getElementById('modal-create').classList.add('hidden');
-    enterGame(roomId);
+// QUICK PLAY LOGIC (OLONA NA BOT)
+document.getElementById('btn-quick-play').onclick = async () => {
+    const roomsRef = collection(db, "rooms");
+    const q = query(roomsRef, where("status", "==", "waiting"), limit(5));
+    const snap = await getDocs(q);
+    
+    let targetRoom = null;
+    snap.forEach(d => { if(d.data().creator.id !== auth.currentUser.uid) targetRoom = d.id; });
+
+    if (targetRoom) {
+        window.joinRoom(targetRoom);
+    } else {
+        // Create Bot Game
+        const roomId = "BOT_" + Math.floor(Math.random() * 10000);
+        await setDoc(doc(db, "rooms", roomId), {
+            creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+            opponent: { id: "bot_id", name: "Bot NoLimite (AI)" },
+            turn: auth.currentUser.uid, status: "playing", board: initBoard(), winner: null
+        });
+        enterGame(roomId);
+    }
 };
 
-// ================= LOBBY & PLAYERS =================
+document.getElementById('btn-confirm-create').onclick = async () => {
+    const name = document.getElementById('room-uid-input').value || "Lalao";
+    const id = name.replace(/\s+/g, '_') + "_" + Math.floor(Math.random() * 1000);
+    await setDoc(doc(db, "rooms", id), {
+        creator: { id: auth.currentUser.uid, name: auth.currentUser.displayName },
+        status: "waiting", turn: auth.currentUser.uid, board: initBoard(), winner: null
+    });
+    document.getElementById('modal-create').classList.add('hidden');
+    enterGame(id);
+};
+
+// ================= LISTS =================
 function initLobby() {
     onSnapshot(collection(db, "rooms"), (snap) => {
         const div = document.getElementById("rooms-list-dynamic");
@@ -104,8 +114,7 @@ function initLobby() {
             const r = d.data();
             if (r.status === "waiting") {
                 div.innerHTML += `<div class="room-card glass animate-pop">
-                    <span>🏠 ${d.id}</span>
-                    <button onclick="joinRoom('${d.id}')">Hiditra</button>
+                    <span>🏠 ${d.id}</span> <button onclick="joinRoom('${d.id}')">Hiditra</button>
                 </div>`;
             }
         });
@@ -122,10 +131,7 @@ function initPlayerList() {
             div.innerHTML += `
                 <div class="player-item glass animate-pop" onclick="sendInvite('${p.uid}', '${p.name}')">
                     <img src="${p.avatar}" class="player-img">
-                    <div class="player-info">
-                        <span class="player-name">${p.name}</span>
-                        <span class="player-uid">#${p.uid.substring(0,6)}</span>
-                    </div>
+                    <div class="player-info"><b>${p.name}</b><br><small>#${p.uid.substring(0,6)}</small></div>
                 </div>`;
         });
     });
@@ -150,7 +156,7 @@ function showInviteUI(id, invite) {
     document.body.appendChild(box);
 }
 
-// ================= GAME LOGIC (FANORONA TELO) =================
+// ================= GAME ENGINE =================
 function initBoard() {
     let b = [];
     for (let i = 0; i < 9; i++) b.push({ id: i, x: i % 3, y: Math.floor(i / 3), value: 0 });
@@ -167,10 +173,8 @@ function enterGame(id) {
         const game = snap.data();
         if (game) {
             render(game);
-            if (game.winner) {
-                alert("🏆 Mpandresy: " + game.winner);
-                location.reload();
-            }
+            if (game.turn === "bot_id" && !game.winner) setTimeout(() => executeBotMove(game), 1000);
+            if (game.winner) { alert("🏆 Mpandresy: " + game.winner); location.reload(); }
         }
     });
 }
@@ -185,7 +189,6 @@ function render(game) {
         const div = document.createElement("div");
         div.className = "grid-spot";
         if (selectedCell?.id === cell.id) div.classList.add("active-spot");
-        
         if (cell.value) {
             const s = document.createElement("div");
             s.className = `stone ${cell.value === 1 ? 'black-stone' : 'white-stone'}`;
@@ -202,70 +205,75 @@ async function handleMove(cell, game) {
     let b = [...game.board];
     const myStones = b.filter(c => c.value === myVal).length;
 
-    // Phase 1: Fametrahana (latsaky ny 3 vato)
     if (myStones < 3) {
-        if (cell.value === 0) {
-            b[cell.id].value = myVal;
-            checkAndFinish(b, game);
-        }
-    } 
-    // Phase 2: Fifindra (efa misy 3 vato)
-    else {
+        if (cell.value === 0) { b[cell.id].value = myVal; finalizeTurn(b, game); }
+    } else {
         if (!selectedCell) {
             if (cell.value === myVal) { selectedCell = cell; render(game); }
         } else {
             const dx = Math.abs(cell.x - selectedCell.x);
             const dy = Math.abs(cell.y - selectedCell.y);
             if (cell.value === 0 && dx <= 1 && dy <= 1) {
-                b[selectedCell.id].value = 0;
-                b[cell.id].value = myVal;
-                selectedCell = null;
-                checkAndFinish(b, game);
+                b[selectedCell.id].value = 0; b[cell.id].value = myVal;
+                selectedCell = null; finalizeTurn(b, game);
             } else { selectedCell = null; render(game); }
         }
     }
 }
 
-function checkAndFinish(newBoard, game) {
-    const winPatterns = [
-        [0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]
-    ];
+function finalizeTurn(b, game) {
+    const winPatterns = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
     let winner = null;
     for (let p of winPatterns) {
-        if (newBoard[p[0]].value !== 0 && 
-            newBoard[p[0]].value === newBoard[p[1]].value && 
-            newBoard[p[0]].value === newBoard[p[2]].value) {
-            winner = auth.currentUser.displayName;
-            break;
+        if (b[p[0]].value !== 0 && b[p[0]].value === b[p[1]].value && b[p[0]].value === b[p[2]].value) {
+            winner = auth.currentUser.displayName; break;
         }
     }
     const nextTurn = game.turn === game.creator.id ? (game.opponent?.id || game.creator.id) : game.creator.id;
-    updateDoc(doc(db, "rooms", currentRoomId), {
-        board: newBoard,
-        turn: winner ? "end" : nextTurn,
-        winner: winner
+    updateDoc(doc(db, "rooms", currentRoomId), { board: b, turn: winner ? "end" : nextTurn, winner: winner });
+}
+
+async function executeBotMove(game) {
+    let b = [...game.board];
+    const botVal = 2;
+    const myStones = b.filter(c => c.value === botVal);
+    let target = null, from = null;
+
+    if (myStones.length < 3) {
+        const empty = b.filter(c => c.value === 0);
+        target = empty[Math.floor(Math.random() * empty.length)];
+        b[target.id].value = botVal;
+    } else {
+        for (let s of myStones) {
+            let moves = b.filter(c => c.value === 0 && Math.abs(c.x-s.x)<=1 && Math.abs(c.y-s.y)<=1);
+            if (moves.length > 0) { from = s; target = moves[Math.floor(Math.random()*moves.length)]; break; }
+        }
+        if (from && target) { b[from.id].value = 0; b[target.id].value = botVal; }
+    }
+
+    let botWins = false;
+    const winPatterns = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+    for (let p of winPatterns) {
+        if (b[p[0]].value === botVal && b[p[1]].value === botVal && b[p[2]].value === botVal) { botWins = true; break; }
+    }
+    await updateDoc(doc(db, "rooms", currentRoomId), {
+        board: b, turn: botWins ? "end" : game.creator.id, winner: botWins ? "Bot NoLimite" : null
     });
 }
 
-// ================= CHAT =================
 function initChat(roomId) {
     const msgDiv = document.getElementById('chat-messages');
     document.getElementById('send-chat').onclick = async () => {
         const txt = document.getElementById('chat-text').value;
         if (!txt) return;
-        await addDoc(collection(db, "rooms", roomId, "messages"), {
-            uid: auth.currentUser.uid, text: txt, time: serverTimestamp()
-        });
+        await addDoc(collection(db, "rooms", roomId, "messages"), { uid: auth.currentUser.uid, text: txt, time: serverTimestamp() });
         document.getElementById('chat-text').value = "";
     };
-
     onSnapshot(query(collection(db, "rooms", roomId, "messages"), orderBy("time", "asc")), (snap) => {
         msgDiv.innerHTML = "";
         snap.forEach(m => {
             const d = m.data();
-            msgDiv.innerHTML += `<div class="chat-bubble ${d.uid === auth.currentUser.uid ? 'me' : 'them'}">
-                <p>${d.text}</p>
-            </div>`;
+            msgDiv.innerHTML += `<div class="chat-bubble ${d.uid === auth.currentUser.uid ? 'me' : 'them'}"><p>${d.text}</p></div>`;
         });
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
