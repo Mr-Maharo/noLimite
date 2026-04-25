@@ -30,4 +30,4 @@ export function enterGame(roomId) {
 });
 async function handleMove(cell, game) {
     console.log("move...");
-}
+});
