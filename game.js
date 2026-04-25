@@ -5,6 +5,12 @@ import { botPlay } from "./bot.js";
 
 let currentRoomId = null;
 
+window.addEventListener("beforeunload", () => {
+    if (currentRoomId) {
+        localStorage.setItem("lastRoom", currentRoomId);
+    }
+});
+
 export function enterGame(roomId) {
 
     currentRoomId = roomId;
