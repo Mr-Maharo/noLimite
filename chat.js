@@ -1,36 +1,47 @@
 import { db } from "./firebase.js";
-import { collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import {
+    collection, addDoc,
+    query, orderBy, onSnapshot
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+let chatRoomId = null;
 
 export function initChat(roomId, user) {
 
-    const box = document.getElementById("chat-messages");
+    chatRoomId = roomId;
 
-    onSnapshot(query(collection(db, "rooms", roomId, "chat"), orderBy("time")), snap => {
+    const q = query(
+        collection(db, "chats", roomId, "messages"),
+        orderBy("time")
+    );
 
+    onSnapshot(q, (snap) => {
+
+        const box = document.getElementById("chat-messages");
         box.innerHTML = "";
 
-        snap.forEach(doc => {
-            const m = doc.data();
+        snap.forEach(m => {
+            const d = m.data();
+            const el = document.createElement("div");
 
-            const div = document.createElement("div");
-            div.innerHTML = `<b>${m.name}</b>: ${m.text}`;
-            box.appendChild(div);
+            el.textContent = `${d.name}: ${d.text}`;
+            box.appendChild(el);
         });
-
-        box.scrollTop = box.scrollHeight;
     });
 
     document.getElementById("send-chat").onclick = async () => {
 
-        const input = document.getElementById("chat-input");
+        const input = document.getElementById("chat-text");
 
-        if (!input.value.trim()) return;
-
-        await addDoc(collection(db, "rooms", roomId, "chat"), {
-            text: input.value,
-            name: user.displayName,
-            time: Date.now()
-        });
+        await addDoc(
+            collection(db, "chats", roomId, "messages"),
+            {
+                uid: user.uid,
+                name: user.displayName,
+                text: input.value,
+                time: Date.now()
+            }
+        );
 
         input.value = "";
     };
