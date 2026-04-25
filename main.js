@@ -10,4 +10,5 @@ initAuth((user) => {
     initLobby((roomId) => {
         enterGame(roomId);
     });
+
 });
