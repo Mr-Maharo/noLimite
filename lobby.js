@@ -16,12 +16,22 @@ export function initLobby(joinRoom) {
     }
 
     // ================= QUICK PLAY (TEMP FIX) =================
-    if (btnQuick) {
-        btnQuick.onclick = () => {
-            joinRoom("quick"); // mbola placeholder
-        };
-    }
+    btnQuick.onclick = async () => {
 
+    console.log("QUICK PLAY START");
+
+    // temporary real room
+    const roomId = "room_" + Date.now();
+
+    await setDoc(doc(db, "rooms", roomId), {
+        status: "waiting",
+        board: initBoard ? initBoard() : [],
+        creator: "me",
+        opponent: null
+    });
+
+    joinRoom(roomId);
+};
     // ================= ROOMS LIST =================
     onSnapshot(collection(db, "rooms"), (snap) => {
 
