@@ -1,6 +1,7 @@
+import { collection, onSnapshot, doc, setDoc } 
+from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { db } from "./firebase.js";
 import { collection, onSnapshot } 
-from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 export function initLobby(joinRoom) {
 
