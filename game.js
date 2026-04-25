@@ -1,8 +1,8 @@
 import { db } from "./firebase.js";
 import { doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { renderBoard, selectedCell } from "./board.js";
-import { botPlay } from "./bot.js";
 
+import { botPlay } from "./bot.js";
 let currentRoomId = null;
 
 window.addEventListener("beforeunload", () => {
