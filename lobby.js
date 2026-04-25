@@ -1,39 +1,50 @@
 import { db } from "./firebase.js";
-import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { collection, onSnapshot } 
+from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 export function initLobby(joinRoom) {
 
     const btnCreate = document.getElementById("btn-create-room");
     const btnQuick = document.getElementById("btn-quick-play");
+    const modal = document.getElementById("modal-create");
 
+    // ================= CREATE ROOM =================
     if (btnCreate) {
         btnCreate.onclick = () => {
-            document.getElementById("modal-create").classList.remove("hidden");
+            if (modal) modal.classList.remove("hidden");
         };
     }
 
+    // ================= QUICK PLAY (TEMP FIX) =================
     if (btnQuick) {
         btnQuick.onclick = () => {
-            joinRoom("quick"); // placeholder raha mbola tsy matchmaking
+            joinRoom("quick"); // mbola placeholder
         };
     }
 
+    // ================= ROOMS LIST =================
     onSnapshot(collection(db, "rooms"), (snap) => {
 
         const div = document.getElementById("rooms-list-dynamic");
+        if (!div) return;
+
         div.innerHTML = "";
 
-        snap.forEach(doc => {
+        snap.forEach(docu => {
+
             const el = document.createElement("div");
 
             el.innerHTML = `
-                <span>${doc.id}</span>
+                <span>${docu.id}</span>
                 <button class="join-btn">Join</button>
             `;
 
-            el.querySelector(".join-btn").onclick = () => {
-                joinRoom(doc.id);
-            };
+            const btn = el.querySelector(".join-btn");
+
+            // ✔ SAFE click (tsy break UI)
+            btn.addEventListener("click", () => {
+                joinRoom(docu.id);
+            });
 
             div.appendChild(el);
         });
