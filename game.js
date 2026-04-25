@@ -13,7 +13,7 @@ window.addEventListener("beforeunload", () => {
 
 export function enterGame(roomId) {
 
-    currentRoomId = roomId;
+    console.log("ENTER GAME:", roomId);
 
     onSnapshot(doc(db, "rooms", roomId), (snap) => {
 
@@ -21,20 +21,11 @@ export function enterGame(roomId) {
 
         const game = snap.data();
 
-        if (!game || !game.board) {
-            console.warn("Room tsy mbola ready");
-            return;
-        }
+        console.log("GAME DATA:", game);
 
         renderBoard(game);
-
-        // BOT TURN (raha ilaina)
-        if (game.turn === "bot") {
-            botPlay(game.board);
-        }
     });
 }
-
 // ================= MOVE SYSTEM =================
 export async function handleMove(cell, game) {
 
