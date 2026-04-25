@@ -3,7 +3,9 @@ import { initLobby } from "./lobby.js";
 import { enterGame } from "./game.js";
 import { tryReconnect } from "./reconnect.js";
 import { initPresence } from "./presence.js";
-console.log("JS LOADED OK");
+document.addEventListener("click", (e) => {
+    console.log("CLICK:", e.target);
+});
 initAuth((user) => {
 
     document.getElementById('login-screen').classList.add('hidden');
