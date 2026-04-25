@@ -1,34 +1,48 @@
-import { cloneBoard, getCell } from "./utils.js";
+export function botMove(board) {
 
-export async function botPlay(game, db, currentRoomId) {
+    let bestMove = null;
+    let bestScore = -999;
 
-    let board = cloneBoard(game.board);
+    const bot = 2;
+    const enemy = 1;
 
-    let myPieces = board.filter(c => c.value === 2);
+    for (let i = 0; i < board.length; i++) {
 
-    for (let p of myPieces) {
+        const p = board[i];
+        if (p.value !== bot) continue;
 
-        for (let dx=-1; dx<=1; dx++) {
-            for (let dy=-1; dy<=1; dy++) {
+        for (let j = 0; j < board.length; j++) {
 
-                if (dx===0 && dy===0) continue;
+            const t = board[j];
+            if (t.value !== 0) continue;
 
-                let nx = p.x + dx;
-                let ny = p.y + dy;
+            let score = 0;
 
-                let target = getCell(board, nx, ny);
-                if (!target || target.value !== 0) continue;
+            // ✔ capture check
+            const dx = t.x - p.x;
+            const dy = t.y - p.y;
 
-                getCell(board, p.x, p.y).value = 0;
-                getCell(board, nx, ny).value = 2;
+            const nx = t.x + dx;
+            const ny = t.y + dy;
 
-                await updateDoc(doc(db, "rooms", currentRoomId), {
-                    board,
-                    turn: game.creator.id
-                });
+            const target = board.find(c =>
+                c.x === nx && c.y === ny && c.value === enemy
+            );
 
-                return;
+            if (target) score += 10;
+
+            // ✔ center control
+            if (t.x >= 3 && t.x <= 5) score += 2;
+
+            // ✔ random factor
+            score += Math.random();
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = { from: p, to: t };
             }
         }
     }
+
+    return bestMove;
 }
