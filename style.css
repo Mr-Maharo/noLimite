@@ -357,10 +357,11 @@ body {
 
 #fanorona-grid {
     display: grid;
-    grid-template-columns: repeat(9, 60px);
-    grid-template-rows: repeat(5, 60px);
-    gap: 15px;
-    position: relative;
+    grid-template-columns: repeat(3, 100px); /* 3 ihany */
+    grid-template-rows: repeat(3, 100px);
+    gap: 10px;
+    background-image: url('kianja-fanorona-telo.png'); /* Azonao atao sary background */
+    background-size: cover;
 }
 
 /* Placeholder ho an'ny sary eo amin'ny board */
