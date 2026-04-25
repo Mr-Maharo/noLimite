@@ -1,24 +1,41 @@
 <!DOCTYPE html>
 <html lang="mg">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-    <title>Fanorona Online</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
+<title>Fanorona Online Pro</title>
+
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
+<!-- ================= LOADING ================= -->
+<div id="loading-screen" class="loading-screen">
+    <div class="loader-box glass">
+        <div class="spinner"></div>
+        <h2>FANORONA PRO</h2>
+        <p>Loading...</p>
+    </div>
+</div>
+
 <!-- ================= LOGIN ================= -->
-<section id="login-screen" class="screen flex-center">
+<section id="login-screen" class="screen flex-center hidden">
     <div class="auth-card glass animate-pop">
+
         <h1 class="logo">FANORONA</h1>
-        <button id="btn-google" class="btn-anime-google">
-            Midira amin'ny Google
+        <p class="subtitle">Online Multiplayer Malagasy Board Game</p>
+
+        <button id="btn-google" class="btn-main">
+            🔐 Midira amin'ny Google
         </button>
+
+        <button id="btn-guest" class="btn-secondary">
+            👤 Guest Mode
+        </button>
+
     </div>
 </section>
 
@@ -27,62 +44,170 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar glass">
-        <div class="profile">
-            <div class="avatar-glow">
-                <img id="user-avatar">
-            </div>
-            <h3 id="user-name">...</h3>
+
+        <div class="profile-box">
+            <img id="user-avatar" class="avatar">
+            <h3 id="user-name">Player</h3>
+            <p id="user-rank">Bronze I</p>
         </div>
 
-        <button id="btn-create-room" class="btn-side">➕ Hamorona</button>
-        <button id="btn-quick-play" class="btn-side">⚡ Lalao haingana</button>
+        <div class="sidebar-buttons">
+            <button id="btn-create-room" class="btn-side">➕ Hamorona Room</button>
+            <button id="btn-quick-play" class="btn-side">⚡ Quick Match</button>
+            <button id="btn-ranked" class="btn-side">🏆 Ranked</button>
+            <button id="btn-friends" class="btn-side">👥 Friends</button>
+            <button id="btn-history" class="btn-side">📜 History</button>
+            <button id="btn-settings" class="btn-side">⚙ Settings</button>
+            <button id="btn-logout" class="btn-danger">🚪 Hivoaka</button>
+        </div>
+
     </aside>
 
     <!-- MAIN -->
     <main class="main-content">
 
+        <!-- TOP BAR -->
         <div class="top-fixed glass">
-            <input type="text" placeholder="🔍 Hitady mpilalao">
-            <input type="text" placeholder="🏠 Hitady efitra">
+
+            <input id="search-player" type="text" placeholder="🔍 Hitady mpilalao">
+            <input id="search-room" type="text" placeholder="🏠 Hitady room">
+
+            <div class="status-mini">
+                <span id="online-count">0 online</span>
+            </div>
+
         </div>
 
+        <!-- CONTENT -->
         <div class="content-scroll">
 
-            <!-- ROOMS -->
+            <!-- ROOM LIST -->
             <div class="list-card glass">
-                <h3>🏠 Efitra</h3>
+                <div class="card-head">
+                    <h3>🏠 Rooms</h3>
+                    <button id="refresh-rooms">↻</button>
+                </div>
+
                 <div id="rooms-list-dynamic" class="scroll-area"></div>
             </div>
 
-            <!-- PLAYERS -->
+            <!-- PLAYER LIST -->
             <div class="list-card glass">
-                <h3>👥 Mpilalao</h3>
+                <div class="card-head">
+                    <h3>👥 Players</h3>
+                    <button id="refresh-players">↻</button>
+                </div>
+
                 <div id="players-list-dynamic" class="scroll-area"></div>
+            </div>
+
+            <!-- FRIEND LIST -->
+            <div class="list-card glass">
+                <div class="card-head">
+                    <h3>💚 Friends</h3>
+                </div>
+
+                <div id="friends-list" class="scroll-area"></div>
+            </div>
+
+            <!-- CHAT PREVIEW -->
+            <div class="list-card glass">
+                <div class="card-head">
+                    <h3>💬 Messages</h3>
+                </div>
+
+                <div id="chat-preview-list" class="scroll-area"></div>
             </div>
 
         </div>
     </main>
+
 </section>
 
-<!-- ================= GAME ================= -->
-<section id="game-screen" class="screen hidden flex-center">
-    <div class="game-container glass">
-        <div id="fanorona-grid"></div>
+<!-- ================= GAME SCREEN ================= -->
+<section id="game-screen" class="screen hidden">
+
+    <div class="game-layout">
+
+        <!-- LEFT PANEL -->
+        <aside class="game-left glass">
+
+            <div class="game-player">
+                <h4>⚫ Player 1</h4>
+                <span id="player1-name">...</span>
+            </div>
+
+            <div class="game-player">
+                <h4>⚪ Player 2</h4>
+                <span id="player2-name">...</span>
+            </div>
+
+            <div class="turn-box">
+                <h3 id="turn-status">Tour:</h3>
+                <p id="timer-text">30s</p>
+            </div>
+
+            <div class="score-box">
+                <p>⚫ <span id="count-black">0</span></p>
+                <p>⚪ <span id="count-white">0</span></p>
+            </div>
+
+            <div class="game-buttons">
+                <button id="btn-undo">↩ Undo</button>
+                <button id="btn-restart">🔁 Restart</button>
+                <button id="btn-leave-room">🚪 Quitter</button>
+            </div>
+
+        </aside>
+
+        <!-- BOARD -->
+        <main class="game-center">
+
+            <div class="game-header glass">
+                <h2 id="room-title">Room</h2>
+                <span id="winner-text"></span>
+            </div>
+
+            <div class="game-board-wrap glass">
+                <div id="fanorona-grid"></div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="game-right glass">
+
+            <h3>💬 Chat Match</h3>
+
+            <div id="game-chat-messages" class="game-chat-messages"></div>
+
+            <div class="game-chat-input">
+                <input id="game-chat-text" placeholder="Soraty...">
+                <button id="send-game-chat">Alefa</button>
+            </div>
+
+        </aside>
+
     </div>
+
 </section>
 
 <!-- ================= PLAYER MENU ================= -->
 <div id="player-menu" class="player-menu hidden">
-    <button id="btn-play-user">🎮 Hilalao miaraka</button>
-    <button id="btn-chat-user">💬 Resaka</button>
+
+    <button id="btn-play-user">🎮 Invite Play</button>
+    <button id="btn-chat-user">💬 Chat</button>
+    <button id="btn-add-friend">➕ Add Friend</button>
+    <button id="btn-view-profile">👤 Profile</button>
+
 </div>
 
-<!-- ================= CHAT ================= -->
+<!-- ================= CHAT PANEL ================= -->
 <div id="chat-panel" class="chat-panel hidden">
 
     <div class="chat-header">
-        <span id="chat-name">Resaka</span>
-        <button id="close-chat">X</button>
+        <span id="chat-name">Chat</span>
+        <button id="close-chat">✕</button>
     </div>
 
     <div id="chat-messages" class="chat-messages"></div>
@@ -94,28 +219,115 @@
 
 </div>
 
-<!-- ================= MODAL CREATE ROOM ================= -->
+<!-- ================= INVITE POPUP ================= -->
+<div id="invite-popup" class="invite-popup hidden glass">
+
+    <h3>🎮 Invitation</h3>
+    <p id="invite-text">...</p>
+
+    <div class="invite-actions">
+        <button id="accept-invite">✅ Accept</button>
+        <button id="decline-invite">❌ Decline</button>
+    </div>
+
+    <small id="invite-timer">30s</small>
+
+</div>
+
+<!-- ================= CREATE ROOM MODAL ================= -->
 <div id="modal-create" class="modal hidden">
+
     <div class="modal-content glass">
 
         <span class="close-modal">&times;</span>
 
-        <h3>Hamorona efitra</h3>
+        <h3>➕ Hamorona Room</h3>
 
-        <input id="room-uid-input" placeholder="Anaran'ny efitra">
+        <input id="room-uid-input" placeholder="Anaran'ny Room">
 
         <select id="room-type">
-            <option value="public">🌐 Malalaka</option>
-            <option value="private">🔒 Mihidy</option>
+            <option value="public">🌐 Public</option>
+            <option value="private">🔒 Private</option>
+            <option value="ranked">🏆 Ranked</option>
         </select>
 
-        <input id="room-password" placeholder="Teny miafina" style="display:none;">
+        <input id="room-password" placeholder="Password" style="display:none;">
 
         <button id="btn-confirm-create">Hamorona</button>
 
     </div>
+
 </div>
 
+<!-- ================= SETTINGS MODAL ================= -->
+<div id="settings-modal" class="modal hidden">
+
+    <div class="modal-content glass">
+
+        <span id="close-settings" class="close-modal">&times;</span>
+
+        <h3>⚙ Settings</h3>
+
+        <label>🔊 Sound</label>
+        <input type="range" id="sound-volume" min="0" max="100" value="70">
+
+        <label>🎵 Music</label>
+        <input type="checkbox" id="music-toggle">
+
+        <label>🌙 Dark Mode</label>
+        <input type="checkbox" id="dark-toggle" checked>
+
+        <button id="save-settings">Save</button>
+
+    </div>
+
+</div>
+
+<!-- ================= HISTORY MODAL ================= -->
+<div id="history-modal" class="modal hidden">
+
+    <div class="modal-content glass">
+
+        <span id="close-history" class="close-modal">&times;</span>
+
+        <h3>📜 Match History</h3>
+
+        <div id="history-list" class="scroll-area big-scroll"></div>
+
+    </div>
+
+</div>
+
+<!-- ================= PROFILE MODAL ================= -->
+<div id="profile-modal" class="modal hidden">
+
+    <div class="modal-content glass">
+
+        <span id="close-profile" class="close-modal">&times;</span>
+
+        <h3>👤 Profile</h3>
+
+        <img id="profile-avatar" class="avatar-large">
+
+        <h2 id="profile-name">Player</h2>
+
+        <p id="profile-rank">Rank</p>
+        <p id="profile-winrate">Winrate</p>
+
+    </div>
+
+</div>
+
+<!-- ================= AUDIO ================= -->
+<audio id="sound-click" preload="auto"></audio>
+<audio id="sound-move" preload="auto"></audio>
+<audio id="sound-win" preload="auto"></audio>
+<audio id="sound-chat" preload="auto"></audio>
+
+<!-- ================= TOAST ================= -->
+<div id="toast-box"></div>
+
+<!-- ================= SCRIPT ================= -->
 <script type="module" src="script.js"></script>
 
 </body>
