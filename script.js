@@ -225,29 +225,31 @@ document.getElementById("btn-save-profile").onclick = async () => {
 };
 
 // ================= LOBBY & PLAYER LIST (TOY NY TALOHA) =================
-function initPlayerList() {
-    const playerDiv = document.getElementById("players-list-dynamic");
-    onSnapshot(collection(db, "users"), (snap) => {
-        playerDiv.innerHTML = "";
-        snap.forEach(d => {
-            const p = d.data();
-            if (p.uid && p.uid !== auth.currentUser.uid) {
-                const el = document.createElement("div");
-                el.className = "player-item glass animate-pop";
-                el.innerHTML = `
-                    <div class="player-avatar-wrap">
-                        <img src="${p.avatar || ''}" class="player-img">
-                        <span class="status-dot ${p.status === 'online' ? 'online' : 'offline'}"></span>
+fasync function initPlayerList() {
+    const q = query(collection(db, "users"), where("status", "==", "online"), limit(20));
+    
+    onSnapshot(q, (snapshot) => {
+        const listDiv = document.getElementById("online-players");
+        listDiv.innerHTML = ""; // Diovina aloha
+
+        snapshot.forEach((doc) => {
+            const userData = doc.data();
+            // Tsy aseho ny tena ato anaty lisitra
+            if (userData.uid !== auth.currentUser.uid) {
+                listDiv.innerHTML += `
+                    <div class="player-item">
+                        <img src="${userData.avatar}" class="player-avatar-mini">
+                        <div class="player-info">
+                            <span class="player-name-mini">${userData.name}</span>
+                            <div class="status-indicator"><span class="dot-online"></span> Online</div>
+                        </div>
+                        <button class="btn-invite-mini" onclick="sendInvite('${userData.uid}')">Hantsy</button>
                     </div>
-                    <div class="player-info"><b>${p.name}</b><br><small>#${p.uid.substring(0,6)}</small></div>
                 `;
-                el.onclick = () => sendInvite(p.uid, p.name);
-                playerDiv.appendChild(el);
             }
         });
     });
 }
-
 function initLobby() {
     onSnapshot(collection(db, "rooms"), (snap) => {
         const div = document.getElementById("rooms-list-dynamic");
