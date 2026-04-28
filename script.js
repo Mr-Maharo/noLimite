@@ -636,3 +636,66 @@ function initChat(roomId) {
         }
     );
 }
+// --- FUNCTIONS HANOKAFANA NY MODAL ---
+window.openEditModal = () => {
+    const currentName = document.getElementById("user-name").innerText;
+    const currentAvatar = document.getElementById("user-avatar").src;
+    
+    document.getElementById("edit-name").value = currentName;
+    document.getElementById("edit-avatar").value = currentAvatar;
+    document.getElementById("modal-edit-profile").classList.remove("hidden");
+};
+
+window.closeEditModal = () => {
+    document.getElementById("modal-edit-profile").classList.add("hidden");
+};
+
+// --- LOGIKA HITRERIZANA NY FANOVANA ---
+document.getElementById("btn-save-profile").onclick = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    let newName = document.getElementById("edit-name").value;
+    const newAvatar = document.getElementById("edit-avatar").value.trim();
+
+    // 1. "Clean Name" - fafana ny spasy be loatra
+    const cleanedName = newName.trim().replace(/\s+/g, ' ');
+
+    // 2. Validation: Tsy maintsy misy litera
+    if (cleanedName.length === 0) {
+        alert("Ampidiro ny anaranao!");
+        return;
+    }
+
+    // 3. Validation: 8 characters max
+    if (cleanedName.length > 8) {
+        alert("Tsy mahazo mihoatra ny 8 litera!");
+        return;
+    }
+
+    // 4. Validation: Litera, tarehimarika, ary spasy ihany
+    const regex = /^[a-zA-Z0-9 ]+$/;
+    if (!regex.test(cleanedName)) {
+        alert("Litera, tarehimarika, ary spasy ihany no azo ampiasaina!");
+        return;
+    }
+
+    try {
+        // Havaozina ao amin'ny Firestore
+        await updateDoc(doc(db, "users", user.uid), {
+            name: cleanedName,
+            avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.uid
+        });
+
+        // Havaozina ny UI
+        document.getElementById("user-name").innerText = cleanedName;
+        if (newAvatar) document.getElementById("user-avatar").src = newAvatar;
+
+        alert("Vita soa aman-tsara!");
+        closeEditModal();
+        
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Tsy nety ny fanovana.");
+    }
+};
