@@ -19,9 +19,9 @@ import {
     orderBy,
     where,
     limit,
-    getDocs
+    getDocs,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
 
 // ================= CONFIG =================
 const firebaseConfig = {
@@ -39,21 +39,34 @@ const provider = new GoogleAuthProvider();
 let currentRoomId = null;
 let selectedCell = null;
 
-
 // ================= AUTH =================
 onAuthStateChanged(auth, async (user) => {
-
     if (user) {
         document.getElementById("login-screen").classList.add("hidden");
         document.getElementById("lobby-screen").classList.remove("hidden");
 
-        document.getElementById("user-name").innerText = user.displayName;
-        document.getElementById("user-avatar").src = user.photoURL;
+        // Famakiana ny angona avy ao amin'ny Firestore aloha (Persistence)
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        let finalName = user.displayName;
+        let finalAvatar = user.photoURL;
 
-        await setDoc(doc(db, "users", user.uid), {
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            finalName = data.name || user.displayName;
+            finalAvatar = data.avatar || user.photoURL;
+        }
+
+        // Havaozina ny UI (Lobby Sidebar)
+        document.getElementById("user-name").innerText = finalName;
+        document.getElementById("user-avatar").src = finalAvatar;
+
+        // Tehirizina nefa mampiasa merge mba tsy ho voafafa ny fanovana
+        await setDoc(userRef, {
             uid: user.uid,
-            name: user.displayName,
-            avatar: user.photoURL,
+            name: finalName,
+            avatar: finalAvatar,
             status: "online",
             lastSeen: serverTimestamp()
         }, { merge: true });
@@ -61,9 +74,9 @@ onAuthStateChanged(auth, async (user) => {
         initLobby();
         initPlayerList();
         initInvites(user.uid);
-
     } else {
         document.getElementById("login-screen").classList.remove("hidden");
+        document.getElementById("lobby-screen").classList.add("hidden");
     }
 });
 
@@ -75,7 +88,6 @@ window.addEventListener("beforeunload", async () => {
     }
 });
 
-
 // ================= BUTTONS =================
 document.getElementById("btn-google").onclick = () => {
     signInWithPopup(auth, provider);
@@ -85,33 +97,30 @@ document.getElementById("btn-create-room").onclick = () => {
     document.getElementById("modal-create").classList.remove("hidden");
 };
 
-document.querySelector(".close-modal").onclick = () => {
-    document.getElementById("modal-create").classList.add("hidden");
-};
-
+// ================= CREATE ROOM =================
 document.getElementById("room-type").onchange = function () {
     document.getElementById("room-password").style.display =
         this.value === "private" ? "block" : "none";
 };
 
-
-// ================= CREATE ROOM =================
 document.getElementById("btn-confirm-create").onclick = async () => {
-
     if (!auth.currentUser) return;
 
-    const roomName =
-        document.getElementById("room-uid-input").value.trim() ||
-        "ROOM_" + Math.floor(Math.random() * 10000);
-
+    const roomName = document.getElementById("room-uid-input").value.trim() || 
+                     "ROOM_" + Math.floor(Math.random() * 10000);
     const type = document.getElementById("room-type").value;
     const password = document.getElementById("room-password").value;
+
+    if (type === "private" && !password) {
+        alert("Ampidiro ny teny miafina ho an'ny efitra mihidy!");
+        return;
+    }
 
     await setDoc(doc(db, "rooms", roomName), {
         creator: {
             id: auth.currentUser.uid,
-            name: auth.currentUser.displayName,
-            avatar: auth.currentUser.photoURL
+            name: document.getElementById("user-name").innerText,
+            avatar: document.getElementById("user-avatar").src
         },
         status: "waiting",
         type: type,
@@ -122,66 +131,28 @@ document.getElementById("btn-confirm-create").onclick = async () => {
     document.getElementById("modal-create").classList.add("hidden");
 };
 
-
-// ================= QUICK PLAY =================
-document.getElementById("btn-quick-play").onclick = async () => {
-
-    if (!auth.currentUser) {
-        alert("Midira aloha");
-        return;
-    }
-
-    const q = query(
-        collection(db, "rooms"),
-        where("status", "==", "waiting"),
-        limit(5)
-    );
-
-    const snap = await getDocs(q);
-
-    let targetRoom = null;
-
-    snap.forEach(d => {
-        const r = d.data();
-        if (r.creator.id !== auth.currentUser.uid) {
-            targetRoom = d.id;
-        }
-    });
-
-    if (targetRoom) {
-        joinRoom(targetRoom);
-        return;
-    }
-
-    const roomId = "BOT_" + Math.floor(Math.random() * 10000);
-
-    await setDoc(doc(db, "rooms", roomId), {
-        creator: {
-            id: auth.currentUser.uid,
-            name: auth.currentUser.displayName
-        },
-        opponent: {
-            id: "bot_id",
-            name: "Bot NoLimite (AI)"
-        },
-        turn: auth.currentUser.uid,
-        status: "playing",
-        board: initBoard(),
-        winner: null
-    });
-
-    enterGame(roomId);
-};
-
-
 // ================= GLOBAL FUNCTIONS =================
 window.joinRoom = async (id) => {
+    const roomRef = doc(db, "rooms", id);
+    const roomSnap = await getDoc(roomRef);
+    
+    if (!roomSnap.exists()) return;
+    const roomData = roomSnap.data();
 
-    await updateDoc(doc(db, "rooms", id), {
+    // Fanadihadiana momba ny efitra mihidy
+    if (roomData.type === "private") {
+        const passInput = prompt("Ampidiro ny teny miafina:");
+        if (passInput !== roomData.password) {
+            alert("Diso ny teny miafina!");
+            return;
+        }
+    }
+
+    await updateDoc(roomRef, {
         opponent: {
             id: auth.currentUser.uid,
-            name: auth.currentUser.displayName,
-            avatar: auth.currentUser.photoURL
+            name: document.getElementById("user-name").innerText,
+            avatar: document.getElementById("user-avatar").src
         },
         status: "playing"
     });
@@ -189,134 +160,81 @@ window.joinRoom = async (id) => {
     enterGame(id);
 };
 
-window.sendInvite = async (uid, name) => {
-
-    await addDoc(collection(db, "invites"), {
-        from: auth.currentUser.uid,
-        fromName: auth.currentUser.displayName,
-        to: uid,
-        toName: name,
-        status: "pending",
-        createdAt: Date.now()
-    });
-
-    alert("Fanasana nalefa ho an'i " + name);
+// ================= PROFILE EDIT =================
+window.openEditModal = () => {
+    document.getElementById("edit-name").value = document.getElementById("user-name").innerText;
+    document.getElementById("edit-avatar").value = document.getElementById("user-avatar").src;
+    document.getElementById("modal-edit-profile").classList.remove("hidden");
 };
 
-window.acceptInvite = async (id, data) => {
-
-    const roomId = "GAME_" + Math.floor(Math.random() * 10000);
-
-    await setDoc(doc(db, "rooms", roomId), {
-        creator: {
-            id: data.from,
-            name: data.fromName
-        },
-        opponent: {
-            id: data.to,
-            name: data.toName
-        },
-        turn: data.from,
-        status: "playing",
-        board: initBoard(),
-        winner: null
-    });
-
-    await updateDoc(doc(db, "invites", id), {
-        status: "accepted"
-    });
-
-    document.getElementById("invite-" + id)?.remove();
-
-    enterGame(roomId);
+window.closeEditModal = () => {
+    document.getElementById("modal-edit-profile").classList.add("hidden");
 };
 
+document.getElementById("btn-save-profile").onclick = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-// ================= PLAYER LIST =================
-function initPlayerList() {
+    let newName = document.getElementById("edit-name").value.trim().replace(/\s+/g, ' ');
+    const newAvatar = document.getElementById("edit-avatar").value.trim();
 
-    const playerDiv = document.getElementById("players-list-dynamic");
-    const searchInput = document.getElementById("search-player");
+    if (newName.length === 0 || newName.length > 8 || !(/^[a-zA-Z0-9 ]+$/.test(newName))) {
+        alert("Anarana tsy manara-penitra (8 litera max, tsy misy marika hafahafa)!");
+        return;
+    }
 
-    onSnapshot(collection(db, "users"), (snap) => {
-
-        let allUsers = [];
-
-        snap.forEach(d => {
-            const p = d.data();
-
-            if (p.uid && p.uid !== auth.currentUser.uid) {
-                allUsers.push(p);
-            }
+    try {
+        await updateDoc(doc(db, "users", user.uid), {
+            name: newName,
+            avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.uid
         });
 
-        const renderList = (filter = "") => {
+        document.getElementById("user-name").innerText = newName;
+        if (newAvatar) document.getElementById("user-avatar").src = newAvatar;
 
-            playerDiv.innerHTML = "";
+        alert("Vita soa aman-tsara!");
+        closeEditModal();
+    } catch (e) {
+        alert("Tsy nety ny fanovana.");
+    }
+};
 
-            const filtered = allUsers.filter(u =>
-                u.name.toLowerCase().includes(filter.toLowerCase()) ||
-                u.uid.toLowerCase().includes(filter.toLowerCase())
-            );
-
-            if (filtered.length === 0) {
-                playerDiv.innerHTML =
-                    "<div class='no-player'>Tsy misy mpilalao hita...</div>";
-                return;
-            }
-
-            filtered.forEach(p => {
-
+// ================= LOBBY & PLAYER LIST (TOY NY TALOHA) =================
+function initPlayerList() {
+    const playerDiv = document.getElementById("players-list-dynamic");
+    onSnapshot(collection(db, "users"), (snap) => {
+        playerDiv.innerHTML = "";
+        snap.forEach(d => {
+            const p = d.data();
+            if (p.uid && p.uid !== auth.currentUser.uid) {
                 const el = document.createElement("div");
                 el.className = "player-item glass animate-pop";
-
                 el.innerHTML = `
                     <div class="player-avatar-wrap">
                         <img src="${p.avatar || ''}" class="player-img">
                         <span class="status-dot ${p.status === 'online' ? 'online' : 'offline'}"></span>
                     </div>
-
-                    <div class="player-info">
-                        <b>${p.name}</b><br>
-                        <small>#${p.uid.substring(0,6)}</small>
-                    </div>
+                    <div class="player-info"><b>${p.name}</b><br><small>#${p.uid.substring(0,6)}</small></div>
                 `;
-
                 el.onclick = () => sendInvite(p.uid, p.name);
-
                 playerDiv.appendChild(el);
-            });
-        };
-
-        renderList();
-
-        if (searchInput) {
-            searchInput.oninput = (e) => renderList(e.target.value);
-        }
+            }
+        });
     });
 }
 
-
-// ================= LOBBY =================
 function initLobby() {
-
     onSnapshot(collection(db, "rooms"), (snap) => {
-
         const div = document.getElementById("rooms-list-dynamic");
         div.innerHTML = "";
-
         snap.forEach(d => {
-
             const r = d.data();
-
             if (r.status === "waiting") {
-
+                const isPrivate = r.type === "private" ? "🔒" : "🌐";
                 div.innerHTML += `
                     <div class="room-card glass animate-pop">
-                        <span>🏠 ${d.id}</span>
-                        <button onclick="joinRoom('${d.id}')">
-                            Hiditra
-                        </button>
+                        <span>${isPrivate} ${d.id}</span>
+                        <button onclick="joinRoom('${d.id}')">Hiditra</button>
                     </div>
                 `;
             }
@@ -324,7 +242,7 @@ function initLobby() {
     });
 }
 
-
+// ... Tohizo eto ny ambin'ny kaody (invites, game, bot, sns) izay efa nanananao ...
 // ================= INVITES =================
 function initInvites(uid) {
 
