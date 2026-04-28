@@ -3,7 +3,79 @@
     Theme: Neon Pink, Violet, Cyber Dark
     Detailed Framework for Fanorona Game
 ===================================================== */
+/* --- 15. FRIENDS & ONLINE LIST --- */
+.player-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
 
+.player-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    border: 1px solid transparent;
+    transition: var(--transition);
+}
+
+.player-item:hover {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: var(--neon-violet);
+    transform: translateX(10px);
+}
+
+.player-avatar-mini {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid var(--neon-pink);
+    object-fit: cover;
+}
+
+.player-info {
+    flex: 1;
+}
+
+.player-name-mini {
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: block;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.dot-online {
+    width: 8px;
+    height: 8px;
+    background: #00ff88;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00ff88;
+}
+
+.btn-invite-mini {
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    background: var(--glass);
+    border: 1px solid var(--neon-pink);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-invite-mini:hover {
+    background: var(--neon-pink);
+    box-shadow: 0 0 15px var(--neon-pink-glow);
+}
 /* 1. SETUP & FONTS */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap');
 
