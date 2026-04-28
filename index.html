@@ -11,7 +11,36 @@
 </head>
 
 <body>
+<div class="user-info-container glass">
+    <img id="user-avatar" src="" class="player-img-large">
+    <div class="user-details">
+        <b id="user-name">...</b>
+        <div class="edit-trigger" onclick="openEditModal()">
+            <small>Hanova mombamomba</small> ✏️
+        </div>
+    </div>
+</div>
 
+<div id="modal-edit-profile" class="modal hidden">
+    <div class="modal-content glass animate-pop">
+        <h3>Hanova mombamomba</h3>
+        
+        <div class="input-group">
+            <label>Anarana (8 litera max):</label>
+            <input type="text" id="edit-name" placeholder="Anarana..." maxlength="8">
+        </div>
+
+        <div class="input-group">
+            <label>URL-n'ny sary:</label>
+            <input type="text" id="edit-avatar" placeholder="https://...">
+        </div>
+        
+        <div class="modal-buttons">
+            <button id="btn-save-profile" class="btn-save">Tehirizina</button>
+            <button onclick="closeEditModal()" class="btn-cancel">Hanafoana</button>
+        </div>
+    </div>
+</div>
 <!-- ================= LOGIN ================= -->
 <section id="login-screen" class="screen flex-center">
     <div class="auth-card glass animate-pop">
