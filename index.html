@@ -5,16 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NoLimite - Fanorona Online</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
     <section id="login-screen" class="screen flex-center">
         <div class="auth-card glass animate-pop">
-            <h1 class="logo">FANORONA</h1>
-            <p style="color: #bbb; margin-bottom: 20px;">Tonga soa ao amin'ny NoLimite</p>
+            <h1 class="logo">NOLIMITE</h1>
+            <p style="color: #bbb; margin-bottom: 20px; letter-spacing: 2px;">FANORONA ULTRA EDITION</p>
             <button id="btn-google" class="btn-anime-google">
-                Midira amin'ny Google
+                <i class="fab fa-google"></i> Midira amin'ny Google
             </button>
         </div>
     </section>
@@ -24,51 +25,59 @@
         <aside class="sidebar glass">
             <div class="user-profile-sidebar">
                 <div class="avatar-glow">
-                    <img id="user-avatar" class="player-img-sidebar" src="" alt="Avatar">
+                    <img id="user-avatar" class="player-img-sidebar" src="https://api.dicebear.com/7.x/bottts/svg?seed=NoLimite" alt="Avatar">
                 </div>
                 <div class="user-details">
-                    <h3 id="user-name">...</h3>
+                    <h3 id="user-name">Mpilalao...</h3>
                     <div class="edit-trigger" onclick="openEditModal()">
                         <small>Hanova mombamomba</small> ✏️
                     </div>
                 </div>
             </div>
-<div class="list-card glass-panel">
-    <h3><i class="fas fa-users"></i> Mpilalao mavitrika</h3>
-    <div id="online-players" class="player-list-container">
-        <div class="player-item">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="player-avatar-mini">
-            <div class="player-info">
-                <span class="player-name-mini">Mpandresy Gasy</span>
-                <div class="status-indicator">
-                    <span class="dot-online"></span> Online
+
+            <div class="list-card-mini">
+                <h3><i class="fas fa-users"></i> Namana mavitrika</h3>
+                <div id="online-players" class="player-list-container">
+                    <div class="player-item">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="player-avatar-mini">
+                        <div class="player-info">
+                            <span class="player-name-mini">Mpandresy Gasy</span>
+                            <div class="status-indicator">
+                                <span class="dot-online"></span> <small>Online</small>
+                            </div>
+                        </div>
+                        <button class="btn-invite-mini">Hantsy</button>
+                    </div>
                 </div>
             </div>
-            <button class="btn-invite-mini">Hifampihantsy</button>
-        </div>
-    </div>
-</div>
+
             <nav class="sidebar-nav">
-                <button id="btn-create-room" class="btn-side">➕ Hamorona efitra</button>
+                <button id="btn-create-room" class="btn-side btn-primary">➕ Hamorona efitra</button>
                 <button id="btn-quick-play" class="btn-side">⚡ Lalao haingana</button>
             </nav>
         </aside>
 
         <main class="main-content">
             <div class="top-fixed glass">
-                <input type="text" id="search-player" placeholder="🔍 Hitady mpilalao (UID na Anarana)">
-                <input type="text" id="search-room" placeholder="🏠 Hitady efitra">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-player" placeholder="Hitady mpilalao (UID na Anarana)...">
+                </div>
+                <div class="search-box">
+                    <i class="fas fa-home"></i>
+                    <input type="text" id="search-room" placeholder="Hitady efitra...">
+                </div>
             </div>
 
             <div class="content-scroll">
                 <div class="list-card glass">
-                    <h3>🏠 Efitra malalaka</h3>
+                    <h3><i class="fas fa-door-open"></i> Efitra malalaka</h3>
                     <div id="rooms-list-dynamic" class="scroll-area">
                         </div>
                 </div>
 
                 <div class="list-card glass">
-                    <h3>👥 Mpilalao hafa</h3>
+                    <h3><i class="fas fa-globe"></i> Mpilalao hafa</h3>
                     <div id="players-list-dynamic" class="scroll-area">
                         </div>
                 </div>
@@ -78,8 +87,12 @@
 
     <section id="game-screen" class="screen hidden flex-center">
         <div class="game-container glass animate-pop">
-            <div id="fanorona-grid"></div>
+            <div class="game-header">
+                <button onclick="leaveRoom()" class="btn-exit">🏠 Hiala</button>
+                <div id="turn-indicator">Anjaranao</div>
             </div>
+            <div id="fanorona-grid"></div>
+        </div>
     </section>
 
     <div id="modal-edit-profile" class="modal hidden">
@@ -87,11 +100,11 @@
             <h3>Hanova mombamomba</h3>
             <div class="input-group">
                 <label>Anarana (8 litera max):</label>
-                <input type="text" id="edit-name" placeholder="Anarana..." maxlength="8">
+                <input type="text" id="edit-name" maxlength="8">
             </div>
             <div class="input-group">
                 <label>URL-n'ny sary (Avatar):</label>
-                <input type="text" id="edit-avatar" placeholder="https://...">
+                <input type="text" id="edit-avatar">
             </div>
             <div class="modal-buttons">
                 <button id="btn-save-profile" class="btn-save">Tehirizina</button>
@@ -109,7 +122,7 @@
                 <option value="public">🌐 Malalaka</option>
                 <option value="private">🔒 Mihidy</option>
             </select>
-            <input id="room-password" placeholder="Teny miafina" style="display:none;">
+            <input id="room-password" type="password" placeholder="Teny miafina" style="display:none;">
             <button id="btn-confirm-create" class="btn-save">Hamorona</button>
         </div>
     </div>
