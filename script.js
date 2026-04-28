@@ -96,7 +96,32 @@ document.getElementById("btn-google").onclick = () => {
 document.getElementById("btn-create-room").onclick = () => {
     document.getElementById("modal-create").classList.remove("hidden");
 };
+ // ------- Function hisintonana ny mpilalao online
+async function initPlayerList() {
+    const q = query(collection(db, "users"), where("status", "==", "online"), limit(20));
+    
+    onSnapshot(q, (snapshot) => {
+        const listDiv = document.getElementById("online-players");
+        listDiv.innerHTML = ""; // Diovina aloha
 
+        snapshot.forEach((doc) => {
+            const userData = doc.data();
+            // Tsy aseho ny tena ato anaty lisitra
+            if (userData.uid !== auth.currentUser.uid) {
+                listDiv.innerHTML += `
+                    <div class="player-item">
+                        <img src="${userData.avatar}" class="player-avatar-mini">
+                        <div class="player-info">
+                            <span class="player-name-mini">${userData.name}</span>
+                            <div class="status-indicator"><span class="dot-online"></span> Online</div>
+                        </div>
+                        <button class="btn-invite-mini" onclick="sendInvite('${userData.uid}')">Hantsy</button>
+                    </div>
+                `;
+            }
+        });
+    });
+}
 // ================= CREATE ROOM =================
 document.getElementById("room-type").onchange = function () {
     document.getElementById("room-password").style.display =
