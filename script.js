@@ -617,3 +617,60 @@ document.getElementById("btn-save-profile").onclick = async () => {
         alert("Tsy nety ny fanovana.");
     }
 };
+// ================= QUICK PLAY FUNCTION =================
+document.getElementById("btn-quick-play").onclick = async () => {
+
+    if (!auth.currentUser) {
+        alert("Midira aloha vao afaka milalao!");
+        return;
+    }
+
+    // 1. Mitady efitra "waiting" (Efitra efa misy mpilalao miandry)
+    const q = query(
+        collection(db, "rooms"),
+        where("status", "==", "waiting"),
+        limit(10)
+    );
+
+    const snap = await getDocs(q);
+    let targetRoomId = null;
+
+    snap.forEach(d => {
+        const r = d.data();
+        // Tsy miditra amin'ny efitra noforonintsika ihany
+        if (r.creator.id !== auth.currentUser.uid && r.type !== "private") {
+            targetRoomId = d.id;
+        }
+    });
+
+    // 2. Raha nahita efitra dia miditra avy hatrany
+    if (targetRoomId) {
+        joinRoom(targetRoomId);
+        return;
+    }
+
+    // 3. Raha tsy nisy efitra hita, dia mamorona efitra vaovao miaraka amin'ny Bot
+    const botRoomId = "BOT_" + Math.floor(Math.random() * 10000);
+    const userName = document.getElementById("user-name").innerText;
+    const userAvatar = document.getElementById("user-avatar").src;
+
+    await setDoc(doc(db, "rooms", botRoomId), {
+        creator: {
+            id: auth.currentUser.uid,
+            name: userName,
+            avatar: userAvatar
+        },
+        opponent: {
+            id: "bot_id",
+            name: "Bot NoLimite (AI)",
+            avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=NoLimite"
+        },
+        turn: auth.currentUser.uid,
+        status: "playing",
+        board: initBoard(), // Ataovy azo antoka fa misy ity function ity
+        winner: null,
+        createdAt: serverTimestamp()
+    });
+
+    enterGame(botRoomId); // Miditra ao anaty lalao avy hatrany
+};
