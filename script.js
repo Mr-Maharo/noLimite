@@ -304,3 +304,36 @@ function initChat(roomId) {
         msgDiv.scrollTop = msgDiv.scrollHeight;
     });
 }
+document.querySelector(".close-modal").onclick = () => {
+    document.getElementById("modal-create").classList.add("hidden");
+};
+document.getElementById("btn-confirm-create").onclick = async () => {
+
+    const roomName =
+        document.getElementById("room-uid-input").value || 
+        "ROOM_" + Math.floor(Math.random()*10000);
+
+    const type = document.getElementById("room-type").value;
+    const password = document.getElementById("room-password").value;
+
+    await setDoc(doc(db, "rooms", roomName), {
+        creator: {
+            id: auth.currentUser.uid,
+            name: auth.currentUser.displayName
+        },
+        status: "waiting",
+        type: type,
+        password: type === "private" ? password : "",
+        createdAt: serverTimestamp()
+    });
+
+    document.getElementById("modal-create").classList.add("hidden");
+};
+document.getElementById("room-type").onchange = function () {
+    document.getElementById("room-password").style.display =
+        this.value === "private" ? "block" : "none";
+};
+document.getElementById("btn-quick-play").onclick = async () => {
+   if (!auth.currentUser) return alert("Midira aloha");
+}
+
