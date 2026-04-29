@@ -21,6 +21,36 @@
   --glow-pink:0 0 20px rgba(255,0,128,.4);
   --glow-violet:0 0 20px rgba(138,0,255,.4);
 }
+.btn-ai {
+    margin-top: 15px;
+    border: 1px solid var(--cyan);
+    background: rgba(0, 240, 255, 0.1);
+    color: var(--cyan);
+    padding: 10px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    transition: 0.3s;
+    width: 100%;
+}
+
+.btn-ai:hover {
+    background: rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.badge-ai {
+    font-size: 11px;
+    background: rgba(0, 240, 255, 0.15);
+    color: var(--cyan);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    margin-top: 8px;
+    display: inline-block;
+}
 /* ================= MOBILE OPTIMIZATIONS ================= */
 @media(max-width:500px){
   .auth-card{
