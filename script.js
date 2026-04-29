@@ -107,10 +107,15 @@ async function autoDeleteRoom(roomId) {
 
 window.deleteRoom = async (roomId) => {
     if (confirm("Tena hovafanao ve ity efitra ity?")) {
-        await deleteDoc(doc(db, "rooms", roomId));
+        try {
+            await deleteDoc(doc(db, "rooms", roomId));
+            // Tsy mila manao inona isika eto fa ny onSnapshot (initLobby) 
+            // no hanala azy ho azy eo amin'ny sary.
+        } catch (e) {
+            console.error("Error deleting room:", e);
+        }
     }
 };
-
 // ================= INVITE SYSTEM =================
 window.sendInvite = async (targetUid) => {
     if (!auth.currentUser) return;
@@ -395,23 +400,40 @@ function initChat(roomId) {}
 
 // ================= QUICK PLAY =================
 document.getElementById("btn-quick-play").onclick = async () => {
-    const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(5));
+    // 1. Mitady efitra efa misy aloha
+    const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(10));
     const snap = await getDocs(q);
-    let target = null;
-    snap.forEach(d => { if (d.data().creator.id !== auth.currentUser.uid) target = d.id; });
-    
-    if (target) joinRoom(target);
-    else {
-        const botId = "BOT_" + Date.now();
-        await setDoc(doc(db, "rooms", botId), {
-            creator: { id: auth.currentUser.uid, name: document.getElementById("user-name").innerText, avatar: "" },
-            opponent: { id: "bot_id", name: "Bot NoLimite", avatar: "" },
-            status: "playing", board: initBoard(), turn: auth.currentUser.uid, createdAt: serverTimestamp()
+    let foundRoom = null;
+
+    snap.forEach(d => {
+        const r = d.data();
+        if (r.creator.id !== auth.currentUser.uid && r.type !== "private") {
+            foundRoom = d.id;
+        }
+    });
+
+    if (foundRoom) {
+        joinRoom(foundRoom);
+    } else {
+        // 2. Raha tsy misy dia mamorona efitra vaovao (izay hiseho ao amin'ny Colone 2)
+        const autoId = "QUICK_" + Math.floor(Math.random() * 1000);
+        await setDoc(doc(db, "rooms", autoId), {
+            creator: { 
+                id: auth.currentUser.uid, 
+                name: document.getElementById("user-name").innerText,
+                avatar: document.getElementById("user-avatar").src 
+            },
+            status: "waiting",
+            type: "public",
+            createdAt: serverTimestamp()
         });
-        enterGame(botId);
+        
+        // Alefa ny timer 5min hamafa azy raha tsy misy miditra
+        autoDeleteRoom(autoId); 
+        
+        alert("Tsy misy efitra malalaka. Namorona efitra vaovao ho anao izahay, miandrasa kely misy hiditra...");
     }
 };
-
 // ================= ROOM CREATION =================
 document.getElementById("btn-confirm-create").onclick = async () => {
     const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random()*1000);
