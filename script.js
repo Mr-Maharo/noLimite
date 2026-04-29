@@ -337,17 +337,37 @@ async function handleMove(cell, game) {
     let b = [...game.board];
     const myStones = b.filter(c => c.value === myVal).length;
 
+    // 1. DINGANA FAMETRAHANA (Placement Phase) - hatramin'ny 3 vato
     if (myStones < 3) {
-        if (cell.value === 0) { b[cell.id].value = myVal; finalizeTurn(b, game); }
-    } else {
+        if (cell.value === 0) { 
+            b[cell.id].value = myVal; 
+            finalizeTurn(b, game); 
+        }
+    } 
+    // 2. DINGANA FIFINDRANA (Movement Phase)
+    else {
         if (!selectedCell) {
-            if (cell.value === myVal) { selectedCell = cell; render(game); }
+            // Mifidy ny vato hifindra
+            if (cell.value === myVal) { 
+                selectedCell = cell; 
+                render(game); 
+            }
         } else {
-            const dx = Math.abs(cell.x - selectedCell.x), dy = Math.abs(cell.y - selectedCell.y);
+            // Ny "Fanorona telo" dia afaka mifindra amin'ny teboka rehetra mifanila (8 directions)
+            const dx = Math.abs(cell.x - selectedCell.x);
+            const dy = Math.abs(cell.y - selectedCell.y);
+            
+            // Raha banga ilay teboka ary eo akaiky (distansy 1)
             if (cell.value === 0 && dx <= 1 && dy <= 1) {
-                b[selectedCell.id].value = 0; b[cell.id].value = myVal;
-                selectedCell = null; finalizeTurn(b, game);
-            } else { selectedCell = null; render(game); }
+                b[selectedCell.id].value = 0; // miala eo amin'ny toerana taloha
+                b[cell.id].value = myVal;      // mifindra amin'ny vaovao
+                selectedCell = null; 
+                finalizeTurn(b, game);
+            } else {
+                // Raha hifidy vato hafa indray
+                selectedCell = null; 
+                render(game); 
+            }
         }
     }
 }
