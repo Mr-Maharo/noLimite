@@ -45,7 +45,51 @@ let myCurrentUid = null;
 function getUserId() {
     return myCurrentUid || auth.currentUser?.uid || null;
 }
+// AI MORA - Random move
+async function aiMove(game) {
+    if (game.turn !== 'AI_BOT' || game.status !== 'playing') return;
+    
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Miandry 1s mba ho natural
+    
+    // Tadiavo daholo ny vato AI
+    const aiStones = game.board.filter(cell => cell.value === 2);
+    // Tadiavo daholo ny toerana malalaka
+    const emptyCells = game.board.filter(cell => cell.value === 0);
+    
+    if (aiStones.length === 0 || emptyCells.length === 0) return;
+    
+    // Safidio vato random
+    const randomStone = aiStones[Math.floor(Math.random() * aiStones.length)];
+    // Safidio toerana random
+    const randomEmpty = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    
+    // Ataovy ny move
+    const newBoard = game.board.map(cell => {
+        if (cell.id === randomStone.id) return { ...cell, value: 0 };
+        if (cell.id === randomEmpty.id) return { ...cell, value: 2 };
+        return cell;
+    });
+    
+    await updateDoc(doc(db, "rooms", currentRoomId), {
+        board: newBoard,
+        turn: game.creator.id // Averina aminao
+    });
+    playSound('click');
+}
 
+// Antsoy ny AI rehefa tour-ny
+// Ampio ity ao amin'ny onSnapshot an'ny room ao amin'ny enterGame()
+onSnapshot(roomRef, (snap) => {
+    const game = snap.data();
+    if (!game) return;
+    render(game);
+    
+    if (game.turn === 'AI_BOT') {
+        aiMove(game);
+    }
+    
+    // ... ny code an'ny timer sy winner efa misy
+});
 // ================= LOGIN GUEST =================
 document.getElementById("btn-guest").onclick = async () => {
     let guestUid = localStorage.getItem("nolimite_guest_uid");
