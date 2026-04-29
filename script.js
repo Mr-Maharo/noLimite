@@ -78,7 +78,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// Offline status rehefa miala
 window.addEventListener("beforeunload", async () => {
     if (auth.currentUser) {
         await updateDoc(doc(db, "users", auth.currentUser.uid), { status: "offline" });
@@ -93,7 +92,26 @@ document.getElementById("room-type").onchange = function () {
     document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
 };
 
-// ================= INVITE SYSTEM (HANTSY) =================
+// ================= AUTO-DELETE LOGIC =================
+// Hamafa ny room raha tsy misy miditra ao anatin'ny 5 minitra
+async function autoDeleteRoom(roomId) {
+    setTimeout(async () => {
+        const roomRef = doc(db, "rooms", roomId);
+        const snap = await getDoc(roomRef);
+        if (snap.exists() && snap.data().status === "waiting") {
+            await deleteDoc(roomRef);
+            console.log("Room deleted due to inactivity: " + roomId);
+        }
+    }, 5 * 60 * 1000); 
+}
+
+window.deleteRoom = async (roomId) => {
+    if (confirm("Tena hovafanao ve ity efitra ity?")) {
+        await deleteDoc(doc(db, "rooms", roomId));
+    }
+};
+
+// ================= INVITE SYSTEM =================
 window.sendInvite = async (targetUid) => {
     if (!auth.currentUser) return;
     const myName = document.getElementById("user-name").innerText;
@@ -153,7 +171,7 @@ window.rejectInvite = async (inviteId) => {
     await updateDoc(doc(db, "invites", inviteId), { status: "rejected" });
 };
 
-// ================= LOBBY & PLAYERS =================
+// ================= LOBBY & PLAYERS (2 COLUMNS) =================
 async function initPlayerList() {
     const q = query(collection(db, "users"), where("status", "==", "online"), limit(20));
     onSnapshot(q, (snapshot) => {
@@ -182,73 +200,80 @@ async function initPlayerList() {
 
 function initLobby() {
     onSnapshot(collection(db, "rooms"), (snap) => {
-        const div = document.getElementById("rooms-list-dynamic");
-        div.innerHTML = "";
+        const publicList = document.getElementById("rooms-list-dynamic"); // Colone 1
+        const myRoomsList = document.getElementById("my-rooms-list"); // Colone 2 (Mila ampidirina ao anaty HTML ity id ity)
+        
+        if (publicList) publicList.innerHTML = "";
+        if (myRoomsList) myRoomsList.innerHTML = "";
+
         snap.forEach(d => {
             const r = d.data();
+            const roomId = d.id;
             if (r.status === "waiting") {
                 const isPrivate = r.type === "private" ? "🔒" : "🌐";
-                div.innerHTML += `
-                    <div class="room-card glass animate-pop">
-                        <span>${isPrivate} ${d.id}</span>
-                        <button onclick="joinRoom('${d.id}')">Hiditra</button>
-                    </div>`;
+                const playerBadge = `<span class="badge-waiting">● 1/2 miandry</span>`;
+
+                if (r.creator.id === auth.currentUser.uid) {
+                    if (myRoomsList) {
+                        myRoomsList.innerHTML += `
+                            <div class="room-card glass animate-pop">
+                                <span>🏠 ${roomId}</span>
+                                <div class="room-actions">
+                                    <button onclick="sendInviteModal('${roomId}')">📧 Hantsy</button>
+                                    <button class="btn-cancel" style="padding:5px" onclick="deleteRoom('${roomId}')">🗑️</button>
+                                </div>
+                            </div>`;
+                    }
+                } else if (r.type !== "private") {
+                    if (publicList) {
+                        publicList.innerHTML += `
+                            <div class="room-card glass animate-pop">
+                                <span>${isPrivate} ${roomId}</span>
+                                ${playerBadge}
+                                <button onclick="joinRoom('${roomId}')">Hiditra</button>
+                            </div>`;
+                    }
+                }
             }
         });
     });
 }
-// --- HANOKAFANA NY MODAL ---
+
+// ================= PROFILE EDIT =================
 window.openEditModal = () => {
-    // Alaina ny anarana sy sary efa eo amin'ny UI ankehitriny
-    const currentName = document.getElementById("user-name").innerText;
-    const currentAvatar = document.getElementById("user-avatar").src;
-    
-    // Ampidirina ao anaty input-n'ny modal
-    document.getElementById("edit-name").value = currentName;
-    document.getElementById("edit-avatar").value = currentAvatar;
-    
-    // Asehoy ilay modal (esorina ilay class .hidden)
+    document.getElementById("edit-name").value = document.getElementById("user-name").innerText;
+    document.getElementById("edit-avatar").value = document.getElementById("user-avatar").src;
     document.getElementById("modal-edit-profile").classList.remove("hidden");
 };
 
-// --- HANAKATONANA NY MODAL ---
 window.closeEditModal = () => {
     document.getElementById("modal-edit-profile").classList.add("hidden");
 };
 
-// --- HITAHIRIZANA NY FANOVANA (SAVE) ---
 document.getElementById("btn-save-profile").onclick = async () => {
     const user = auth.currentUser;
     if (!user) return;
-
     let newName = document.getElementById("edit-name").value.trim();
     const newAvatar = document.getElementById("edit-avatar").value.trim();
 
-    // Fanadihadiana (Validation)
     if (newName.length === 0 || newName.length > 8) {
         alert("Anarana 1 hatramin'ny 8 litera ihany azafady!");
         return;
     }
 
     try {
-        // 1. Havaozina ao amin'ny Firestore
         await updateDoc(doc(db, "users", user.uid), {
             name: newName,
             avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.uid
         });
-
-        // 2. Havaozina avy hatrany ny UI (Sidebar)
         document.getElementById("user-name").innerText = newName;
         document.getElementById("user-avatar").src = newAvatar;
-
-        alert("Vita soa aman-tsara ny fanovana!");
         closeEditModal();
-        
     } catch (error) {
-        console.error("Error updating profile:", error);
-        alert("Tsy nety ny fanovana, jereo ny fifandraisana.");
+        alert("Tsy nety ny fanovana.");
     }
 };
+
 // ================= GAME LOGIC =================
 function initBoard() {
     let b = [];
@@ -351,10 +376,7 @@ async function executeBotMove(game) {
     updateDoc(doc(db, "rooms", currentRoomId), { board: b, turn: game.creator.id });
 }
 
-function initChat(roomId) {
-    const msgDiv = document.getElementById("chat-messages");
-    // Interface logic for chat (send button, snapshot) goes here
-}
+function initChat(roomId) {}
 
 // ================= QUICK PLAY =================
 document.getElementById("btn-quick-play").onclick = async () => {
@@ -380,9 +402,12 @@ document.getElementById("btn-confirm-create").onclick = async () => {
     const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random()*1000);
     const type = document.getElementById("room-type").value;
     const pass = document.getElementById("room-password").value;
+    
     await setDoc(doc(db, "rooms", name), {
         creator: { id: auth.currentUser.uid, name: document.getElementById("user-name").innerText, avatar: "" },
         status: "waiting", type: type, password: pass, createdAt: serverTimestamp()
     });
+
+    autoDeleteRoom(name); // Alefa ny timer famafana ho azy
     document.getElementById("modal-create").classList.add("hidden");
 };
