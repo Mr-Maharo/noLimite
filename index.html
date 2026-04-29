@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>No Limite Fanorona - Play Malagasy Fanorona Telo Online</title>
-   <meta name="description" content="No Limite Fanorona is a modern Malagasy Fanorona Telo game. Play online free now.">
-<meta name="keywords" content="No Limite Fanorona, Fanorona Madagascar, Malagasy board game, Fanorona Telo">
+    <title>No Limite Fanorona - Play Malagasy Fanorona Telo Online</title>
+    <meta name="description" content="No Limite Fanorona is a modern Malagasy Fanorona Telo game. Play online free now.">
+    <meta name="keywords" content="No Limite Fanorona, Fanorona Madagascar, Malagasy board game, Fanorona Telo">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -42,17 +42,7 @@
             <div class="list-card-mini">
                 <h3><i class="fas fa-users"></i> Namana mavitrika</h3>
                 <div id="online-players" class="player-list-container">
-                    <div class="player-item">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="player-avatar-mini">
-                        <div class="player-info">
-                            <span class="player-name-mini">Mpandresy Gasy</span>
-                            <div class="status-indicator">
-                                <span class="dot-online"></span> <small>Online</small>
-                            </div>
-                        </div>
-                        <button class="btn-invite-mini">Hantsy</button>
                     </div>
-                </div>
             </div>
 
             <nav class="sidebar-nav">
@@ -75,6 +65,12 @@
 
             <div class="content-scroll">
                 <div class="list-card glass">
+                    <h3><i class="fas fa-home"></i> Efitra noforoninao</h3>
+                    <div id="my-rooms-list" class="scroll-area">
+                        </div>
+                </div>
+
+                <div class="list-card glass">
                     <h3><i class="fas fa-door-open"></i> Efitra malalaka</h3>
                     <div id="rooms-list-dynamic" class="scroll-area">
                         </div>
@@ -94,8 +90,16 @@
             <div class="game-header">
                 <button onclick="leaveRoom()" class="btn-exit">🏠 Hiala</button>
                 <div id="turn-indicator">Anjaranao</div>
+                <div id="turn-timer">30s</div>
             </div>
             <div id="fanorona-grid"></div>
+            <div class="chat-container glass">
+                <div id="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input id="chat-input" placeholder="Soraty eto...">
+                    <button id="chat-send">Alefa</button>
+                </div>
+            </div>
         </div>
     </section>
 
