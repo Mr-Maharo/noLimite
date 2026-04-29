@@ -276,11 +276,13 @@ document.getElementById("btn-save-profile").onclick = async () => {
 
 // ================= GAME LOGIC =================
 function initBoard() {
-    let b = [];
-    for (let i = 0; i < 9; i++) {
-        b.push({ id: i, x: i % 3, y: Math.floor(i / 3), value: 0 });
-    }
-    return b;
+    // 1 = Mpilalao 1, 2 = Mpilalao 2, 0 = Banga
+    // Izany hoe 3 ambony vs 3 ambany
+    return [
+        { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 }, // 5-n'ny iray
+        { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 }, // Andalana banga
+        { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }  // 8-n'ny faharoa
+    ];
 }
 
 window.joinRoom = async (id) => {
@@ -333,41 +335,34 @@ function render(game) {
 
 async function handleMove(cell, game) {
     if (game.turn !== auth.currentUser.uid) return;
+    
     const myVal = game.creator.id === auth.currentUser.uid ? 1 : 2;
     let b = [...game.board];
-    const myStones = b.filter(c => c.value === myVal).length;
 
-    // 1. DINGANA FAMETRAHANA (Placement Phase) - hatramin'ny 3 vato
-    if (myStones < 3) {
-        if (cell.value === 0) { 
-            b[cell.id].value = myVal; 
-            finalizeTurn(b, game); 
+    if (!selectedCell) {
+        // MIFIDY NY VATO HAKISAKA
+        if (cell.value === myVal) {
+            selectedCell = cell;
+            render(game); 
         }
-    } 
-    // 2. DINGANA FIFINDRANA (Movement Phase)
-    else {
-        if (!selectedCell) {
-            // Mifidy ny vato hifindra
-            if (cell.value === myVal) { 
-                selectedCell = cell; 
-                render(game); 
-            }
-        } else {
-            // Ny "Fanorona telo" dia afaka mifindra amin'ny teboka rehetra mifanila (8 directions)
-            const dx = Math.abs(cell.x - selectedCell.x);
-            const dy = Math.abs(cell.y - selectedCell.y);
+    } else {
+        // MIFIDY NY TOERANA HANAKISAHANA
+        const dx = Math.abs(cell.x - selectedCell.x);
+        const dy = Math.abs(cell.y - selectedCell.y);
+
+        // Fitsipika Fanorona Telo:
+        // 1. Toerana banga (value === 0)
+        // 2. Toerana mifanila (distance 1: ambony, ambany, havia, havanana, ary sary mitsaka/diagonal)
+        if (cell.value === 0 && dx <= 1 && dy <= 1) {
+            b[selectedCell.id].value = 0; // Miala amin'ny toerana taloha
+            b[cell.id].value = myVal;      // Mifindra amin'ny toerana vaovao
             
-            // Raha banga ilay teboka ary eo akaiky (distansy 1)
-            if (cell.value === 0 && dx <= 1 && dy <= 1) {
-                b[selectedCell.id].value = 0; // miala eo amin'ny toerana taloha
-                b[cell.id].value = myVal;      // mifindra amin'ny vaovao
-                selectedCell = null; 
-                finalizeTurn(b, game);
-            } else {
-                // Raha hifidy vato hafa indray
-                selectedCell = null; 
-                render(game); 
-            }
+            selectedCell = null;
+            finalizeTurn(b, game);
+        } else {
+            // Raha te hifidy vato hafa indray
+            selectedCell = (cell.value === myVal) ? cell : null;
+            render(game);
         }
     }
 }
