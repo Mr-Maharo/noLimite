@@ -36,17 +36,26 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+// ================= GLOBAL STATE =================
 let currentRoomId = null;
 let selectedCell = null;
 let myCurrentUid = null;
 let isAiThinking = false;
 let turnTimerInterval = null;
 
+// Unsubscribe functions
+let unsubscribeRoom = null;
+let unsubscribeRoomLobby = null;
+let unsubscribeChat = null;
+let unsubscribePlayers = null;
+let unsubscribeRooms = null;
+
 // ================= SOUND =================
 const sounds = {
     click: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_2c8d2e3e4d.mp3'),
     invite: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_5a6b7c8d9e.mp3'),
-    win: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_1a2b3c4d5e.mp3')
+    win: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_1a2b3c4d5e.mp3'),
+    capture: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_9e8d7c6b5a.mp3')
 };
 
 function playSound(type) {
@@ -61,31 +70,149 @@ function getUserId() {
     return myCurrentUid || auth.currentUser?.uid || null;
 }
 
+function unsubscribeAll() {
+    if (unsubscribeRoom) unsubscribeRoom();
+    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
+    if (unsubscribeChat) unsubscribeChat();
+    if (turnTimerInterval) clearInterval(turnTimerInterval);
+}
+
+// ================= PRESENCE SYSTEM =================
+function setupPresence(uid) {
+    const userRef = doc(db, "users", uid);
+
+    // Online
+    updateDoc(userRef, {
+        status: "online",
+        lastSeen: serverTimestamp()
+    });
+
+    // Offline rehefa miala
+    window.addEventListener("beforeunload", () => {
+        updateDoc(userRef, { status: "offline" });
+    });
+
+    // Heartbeat isaky ny 30s
+    setInterval(() => {
+        updateDoc(userRef, { lastSeen: serverTimestamp() });
+    }, 30000);
+}
+
+// ================= FANORONTELO LOGIC =================
+function initBoard() {
+    return [
+        { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 },
+        { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 },
+        { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }
+    ];
+}
+
+// Jereo raha mi-align ny ligne iray
+function isAligned(x1, y1, x2, y2, x3, y3) {
+    // Horizontal
+    if (y1 === y2 && y2 === y3) return true;
+    // Vertical
+    if (x1 === x2 && x2 === x3) return true;
+    // Diagonal
+    if (Math.abs(x1 - x2) === Math.abs(y1 - y2) &&
+        Math.abs(x2 - x3) === Math.abs(y2 - y3) &&
+        (x2 - x1) * (y3 - y2) === (x3 - x2) * (y2 - y1)) return true;
+    return false;
+}
+
+// Fanorontelo capture: Paika (approach) sy Vela (withdrawal)
+function getCaptures(board, fromCell, toCell, myVal) {
+    const opponentVal = myVal === 1? 2 : 1;
+    const captured = [];
+
+    // Direction an'ny move
+    const dx = toCell.x - fromCell.x;
+    const dy = toCell.y - fromCell.y;
+
+    // 1. PAIKA - Capture by approach
+    let nx = toCell.x + dx;
+    let ny = toCell.y + dy;
+    while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
+        const nextCell = board.find(c => c.x === nx && c.y === ny);
+        if (!nextCell || nextCell.value!== opponentVal) break;
+        captured.push(nextCell.id);
+        nx += dx;
+        ny += dy;
+    }
+
+    // 2. VELA - Capture by withdrawal
+    nx = fromCell.x - dx;
+    ny = fromCell.y - dy;
+    while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
+        const nextCell = board.find(c => c.x === nx && c.y === ny);
+        if (!nextCell || nextCell.value!== opponentVal) break;
+        captured.push(nextCell.id);
+        nx -= dx;
+        ny -= dy;
+    }
+
+    return [...new Set(captured)]; // Esory duplicate
+}
+
+function checkWinnerFanorona(board, creatorId, opponentId) {
+    const creatorStones = board.filter(c => c.value === 1).length;
+    const opponentStones = board.filter(c => c.value === 2).length;
+
+    if (creatorStones === 0) return opponentId;
+    if (opponentStones === 0) return creatorId;
+
+    // Raha tsy afaka mihetsika intsony
+    const canMove = (val) => {
+        const stones = board.filter(c => c.value === val);
+        for (let stone of stones) {
+            for (let cell of board) {
+                if (cell.value === 0) {
+                    const dx = Math.abs(cell.x - stone.x);
+                    const dy = Math.abs(cell.y - stone.y);
+                    if (dx <= 1 && dy <= 1 && isAligned(stone.x, stone.y, cell.x, cell.y, 1, 1)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    if (!canMove(1)) return opponentId;
+    if (!canMove(2)) return creatorId;
+
+    return null;
+}
+
 // ================= AI LOGIC =================
 async function aiMove(game) {
     if (game.turn!== 'AI_BOT' || game.status!== 'playing') return;
-
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     const aiStones = game.board.filter(cell => cell.value === 2);
     const emptyCells = game.board.filter(cell => cell.value === 0);
-
     if (aiStones.length === 0 || emptyCells.length === 0) return;
 
-    // AI tsotra: manatona centre
-    const centerCell = game.board.find(c => c.x === 1 && c.y === 1);
+    // AI tsotra: mitady capture aloha
     let bestMove = null;
+    let maxCaptures = -1;
 
-    if (centerCell.value === 0) {
-        // Raha malalaka ny centre dia aleo
-        const nearestStone = aiStones.reduce((prev, curr) => {
-            const prevDist = Math.abs(prev.x - 1) + Math.abs(prev.y - 1);
-            const currDist = Math.abs(curr.x - 1) + Math.abs(curr.y - 1);
-            return currDist < prevDist? curr : prev;
-        });
-        bestMove = { from: nearestStone, to: centerCell };
-    } else {
-        // Random move
+    for (let stone of aiStones) {
+        for (let empty of emptyCells) {
+            const dx = Math.abs(empty.x - stone.x);
+            const dy = Math.abs(empty.y - stone.y);
+            if (dx <= 1 && dy <= 1) {
+                const captures = getCaptures(game.board, stone, empty, 2);
+                if (captures.length > maxCaptures) {
+                    maxCaptures = captures.length;
+                    bestMove = { from: stone, to: empty, captures };
+                }
+            }
+        }
+    }
+
+    if (!bestMove) {
+        // Raha tsy misy capture dia random
         const randomStone = aiStones[Math.floor(Math.random() * aiStones.length)];
         const validMoves = emptyCells.filter(cell => {
             const dx = Math.abs(cell.x - randomStone.x);
@@ -95,17 +222,26 @@ async function aiMove(game) {
         if (validMoves.length > 0) {
             bestMove = {
                 from: randomStone,
-                to: validMoves[Math.floor(Math.random() * validMoves.length)]
+                to: validMoves[Math.floor(Math.random() * validMoves.length)],
+                captures: []
             };
         }
     }
 
     if (bestMove) {
-        const newBoard = game.board.map(cell => {
+        let newBoard = game.board.map(cell => {
             if (cell.id === bestMove.from.id) return {...cell, value: 0 };
             if (cell.id === bestMove.to.id) return {...cell, value: 2 };
             return cell;
         });
+
+        // Esory ny voasambotra
+        if (bestMove.captures.length > 0) {
+            playSound('capture');
+            newBoard = newBoard.map(cell =>
+                bestMove.captures.includes(cell.id)? {...cell, value: 0 } : cell
+            );
+        }
 
         await updateDoc(doc(db, "rooms", currentRoomId), {
             board: newBoard,
@@ -151,6 +287,7 @@ function setupGuestUI(user) {
     document.getElementById("lobby-screen").classList.remove("hidden");
     document.getElementById("user-name").innerText = user.name;
     document.getElementById("user-avatar").src = user.avatar;
+    setupPresence(user.uid);
     initLobby();
     initPlayerList();
     initInvites(user.uid);
@@ -192,30 +329,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-window.addEventListener("beforeunload", async () => {
-    const uid = getUserId();
-    if (uid) {
-        await updateDoc(doc(db, "users", uid), { status: "offline" });
-    }
-});
-
-// ================= BUTTONS & MODALS =================
+// ================= BUTTONS =================
 document.getElementById("btn-google").onclick = () => signInWithPopup(auth, provider);
 document.getElementById("btn-create-room").onclick = () => document.getElementById("modal-create").classList.remove("hidden");
 document.getElementById("room-type").onchange = function () {
     document.getElementById("room-password").style.display = this.value === "private"? "block" : "none";
 };
-
-// ================= AUTO-DELETE =================
-async function autoDeleteRoom(roomId) {
-    setTimeout(async () => {
-        const roomRef = doc(db, "rooms", roomId);
-        const snap = await getDoc(roomRef);
-        if (snap.exists() && snap.data().status === "waiting") {
-            await deleteDoc(roomRef);
-        }
-    }, 5 * 60 * 1000);
-}
 
 window.deleteRoom = async (roomId) => {
     if (confirm("Tena hovafanao ve ity efitra ity?")) {
@@ -228,7 +347,7 @@ window.deleteRoom = async (roomId) => {
     }
 };
 
-// ================= INVITE SYSTEM =================
+// ================= INVITES =================
 window.sendInvite = async (targetUid) => {
     const uid = getUserId();
     if (!uid) return;
@@ -292,10 +411,11 @@ window.rejectInvite = async (inviteId) => {
     await updateDoc(doc(db, "invites", inviteId), { status: "rejected" });
 };
 
-// ================= LOBBY & PLAYERS =================
+// ================= LOBBY =================
 async function initPlayerList() {
+    if (unsubscribePlayers) unsubscribePlayers();
     const q = query(collection(db, "users"), where("status", "==", "online"), limit(20));
-    onSnapshot(q, (snapshot) => {
+    unsubscribePlayers = onSnapshot(q, (snapshot) => {
         const listSidebar = document.getElementById("online-players");
         const listMain = document.getElementById("players-list-dynamic");
         if (listSidebar) listSidebar.innerHTML = "";
@@ -321,7 +441,8 @@ async function initPlayerList() {
 }
 
 function initLobby() {
-    onSnapshot(collection(db, "rooms"), (snap) => {
+    if (unsubscribeRooms) unsubscribeRooms();
+    unsubscribeRooms = onSnapshot(collection(db, "rooms"), (snap) => {
         const publicList = document.getElementById("rooms-list-dynamic");
         const myRoomsList = document.getElementById("my-rooms-list");
 
@@ -360,7 +481,7 @@ function initLobby() {
         });
     });
 
-    // Search functionality
+    // Search
     document.getElementById("search-player").addEventListener("input", (e) => {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll("#players-list-dynamic.player-item").forEach(player => {
@@ -385,7 +506,6 @@ window.viewRoom = async (id) => {
     if (!roomSnap.exists()) return alert("Tsy misy io efitra io");
 
     const r = roomSnap.data();
-
     if (r.type === "private" && r.creator.id!== getUserId()) {
         if (prompt("Teny miafina:")!== r.password) return alert("Diso!");
     }
@@ -394,14 +514,12 @@ window.viewRoom = async (id) => {
     document.getElementById("lobby-screen").classList.add("hidden");
     document.getElementById("room-lobby-screen").classList.remove("hidden");
 
-    onSnapshot(roomRef, (snap) => {
+    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
+    unsubscribeRoomLobby = onSnapshot(roomRef, (snap) => {
         const game = snap.data();
         if (!game) return;
         renderRoomLobby(game, id);
-
-        if (game.status === "playing") {
-            enterGame(id);
-        }
+        if (game.status === "playing") enterGame(id);
     });
 };
 
@@ -416,16 +534,13 @@ function renderRoomLobby(room, roomId) {
             <h2>🏠 ${roomId}</h2>
             <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
         </div>
-
         <div class="players-vs">
             <div class="player-slot ${isCreator? 'you' : ''}">
                 <img src="${room.creator.avatar}" class="player-img-large">
                 <h3>${room.creator.name}</h3>
                 <span class="badge-host">Mpamorona</span>
             </div>
-
             <div class="vs-text">VS</div>
-
             <div class="player-slot ${!isCreator && isFull? 'you' : ''}">
                 ${isFull? `
                     <img src="${room.opponent.avatar}" class="player-img-large">
@@ -440,7 +555,6 @@ function renderRoomLobby(room, roomId) {
                 `}
             </div>
         </div>
-
         <div class="lobby-actions">
             ${isCreator? `
                 ${isFull? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
@@ -461,6 +575,7 @@ window.startGame = async (roomId) => {
 };
 
 window.leaveRoomLobby = () => {
+    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
     document.getElementById("room-lobby-screen").classList.add("hidden");
     document.getElementById("lobby-screen").classList.remove("hidden");
     currentRoomId = null;
@@ -474,7 +589,6 @@ window.joinRoom = async (id) => {
     const roomSnap = await getDoc(roomRef);
     if (!roomSnap.exists()) return;
     const r = roomSnap.data();
-
     if (r.opponent?.id) return alert("Efa feno ity efitra ity");
 
     await updateDoc(roomRef, {
@@ -536,16 +650,9 @@ document.getElementById("btn-save-profile").onclick = async () => {
     }
 };
 
-// ================= GAME LOGIC =================
-function initBoard() {
-    return [
-        { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 },
-        { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 },
-        { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }
-    ];
-}
-
+// ================= GAME =================
 window.enterGame = async (id) => {
+    unsubscribeAll();
     currentRoomId = id;
     document.getElementById("lobby-screen").classList.add("hidden");
     document.getElementById("room-lobby-screen").classList.add("hidden");
@@ -553,8 +660,7 @@ window.enterGame = async (id) => {
     initChat(id);
 
     const roomRef = doc(db, "rooms", id);
-
-    onSnapshot(roomRef, async (snap) => {
+    unsubscribeRoom = onSnapshot(roomRef, async (snap) => {
         const game = snap.data();
         if (!game) return;
         render(game);
@@ -588,7 +694,7 @@ window.enterGame = async (id) => {
             }
 
             // Check Winner
-            const winner = checkWinner(game.board, game.creator.id, game.opponent.id);
+            const winner = checkWinnerFanorona(game.board, game.creator.id, game.opponent.id);
             if (winner) {
                 clearInterval(turnTimerInterval);
                 await updateDoc(roomRef, { status: 'finished', winner: winner });
@@ -658,8 +764,20 @@ async function handleMove(cell, game) {
         const dy = Math.abs(cell.y - selectedCell.y);
 
         if (cell.value === 0 && dx <= 1 && dy <= 1) {
+            // FANORONTELO: Jereo ny capture
+            const captures = getCaptures(b, selectedCell, cell, myVal);
+
             b[selectedCell.id].value = 0;
             b[cell.id].value = myVal;
+
+            // Esory ny voasambotra
+            if (captures.length > 0) {
+                playSound('capture');
+                captures.forEach(id => {
+                    b[id].value = 0;
+                });
+            }
+
             selectedCell = null;
             await finalizeTurn(b, game);
         } else {
@@ -670,9 +788,7 @@ async function handleMove(cell, game) {
 }
 
 async function finalizeTurn(b, game) {
-    const uid = getUserId();
-    const myVal = game.creator.id === uid? 1 : 2;
-    const winner = checkWinner(b, game.creator.id, game.opponent.id);
+    const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id);
     const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
 
     await updateDoc(doc(db, "rooms", currentRoomId), {
@@ -682,21 +798,8 @@ async function finalizeTurn(b, game) {
     });
 }
 
-function checkWinner(board, creatorId, opponentId) {
-    const winPatterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    for (let p of winPatterns) {
-        if (board[p[0]].value === 1 && board[p[1]].value === 1 && board[p[2]].value === 1) {
-            return creatorId;
-        }
-        if (board[p[0]].value === 2 && board[p[1]].value === 2 && board[p[2]].value === 2) {
-            return opponentId;
-        }
-    }
-    return null;
-}
-
 window.leaveGame = async () => {
-    if (turnTimerInterval) clearInterval(turnTimerInterval);
+    unsubscribeAll();
     if (currentRoomId) {
         await deleteDoc(doc(db, "rooms", currentRoomId));
     }
@@ -708,6 +811,8 @@ window.leaveGame = async () => {
 
 // ================= CHAT =================
 function initChat(roomId) {
+    if (unsubscribeChat) unsubscribeChat();
+
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const chatSend = document.getElementById("chat-send");
@@ -715,7 +820,7 @@ function initChat(roomId) {
     chatMessages.innerHTML = "";
 
     const q = query(collection(db, "rooms", roomId, "chat"), orderBy("timestamp", "asc"));
-    onSnapshot(q, (snap) => {
+    unsubscribeChat = onSnapshot(q, (snap) => {
         chatMessages.innerHTML = "";
         snap.forEach(d => {
             const msg = d.data();
@@ -756,62 +861,4 @@ document.getElementById("btn-quick-play").onclick = async () => {
 
     snap.forEach(d => {
         const r = d.data();
-        if (r.creator.id!== uid && r.type!== "private") {
-            foundRoom = d.id;
-        }
-    });
-
-    if (foundRoom) {
-        viewRoom(foundRoom);
-    } else {
-        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
-        await setDoc(doc(db, "rooms", autoId), {
-            creator: {
-                id: uid,
-                name: document.getElementById("user-name").innerText,
-                avatar: document.getElementById("user-avatar").src
-            },
-            status: "waiting",
-            type: "public",
-            createdAt: serverTimestamp()
-        });
-        autoDeleteRoom(autoId);
-        viewRoom(autoId);
-    }
-};
-
-// ================= ROOM CREATION =================
-document.getElementById("btn-confirm-create").onclick = async () => {
-    const uid = getUserId();
-    if (!uid) return;
-
-    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
-    const type = document.getElementById("room-type").value;
-    const pass = document.getElementById("room-password").value;
-
-    await setDoc(doc(db, "rooms", name), {
-        creator: {
-            id: uid,
-            name: document.getElementById("user-name").innerText,
-            avatar: document.getElementById("user-avatar").src
-        },
-        status: "waiting",
-        type: type,
-        password: pass,
-        createdAt: serverTimestamp()
-    });
-
-    autoDeleteRoom(name);
-    document.getElementById("modal-create").classList.add("hidden");
-    viewRoom(name);
-};
-
-// ================= LOGOUT =================
-document.getElementById("btn-logout").onclick = async () => {
-    if (confirm("Hivoaka ve ianao?")) {
-        await auth.signOut();
-        localStorage.removeItem("nolimite_guest_uid");
-        localStorage.removeItem("nolimite_guest_name");
-        location.reload();
-    }
-};
+        if (r.creator.id!== uid && r.type!==
