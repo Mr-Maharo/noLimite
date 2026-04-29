@@ -39,7 +39,48 @@ const provider = new GoogleAuthProvider();
 
 let currentRoomId = null;
 let selectedCell = null;
+
+// Apetraho any ambony indrindra (ivelan'ny function) ity:
 let myCurrentUid = null; 
+
+document.getElementById("btn-guest").onclick = async () => {
+    // 1. Fakana data avy amin'ny LocalStorage
+    let guestUid = localStorage.getItem("nolimite_guest_uid");
+    let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
+    let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
+
+    if (!guestUid) {
+        guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        localStorage.setItem("nolimite_guest_uid", guestUid);
+        localStorage.setItem("nolimite_guest_name", guestName);
+    }
+
+    // 2. Famaritana ny variable global myCurrentUid
+    myCurrentUid = guestUid; 
+
+    const guestData = {
+        uid: guestUid,
+        name: guestName,
+        avatar: guestAvatar,
+        status: "online",
+        isGuest: true,
+        lastSeen: serverTimestamp()
+    };
+
+    try {
+        // 3. Mitahiry ao amin'ny Firestore
+        await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
+
+        // 4. Manokatra UI
+        setupGuestUI(guestData);
+        
+        // 5. Mampandeha ny lisitra (Tena ilaina!)
+        initLobby();
+        initPlayerList();
+    } catch (e) {
+        console.error("Login Guest Error: ", e);
+    }
+};
 // ================= LOGIN GUEST =================
 document.getElementById("btn-guest").onclick = async () => {
     // 1. Mijery raha efa misy Guest ID voatahiry
@@ -87,7 +128,8 @@ function setupGuestUI(user) {
 // ================= AUTH & USER STATE =================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        
+        myCurrentUid = user.uid; // Aza adino ity!
+        // ... ny sisa
         document.getElementById("login-screen").classList.add("hidden");
         document.getElementById("lobby-screen").classList.remove("hidden");
 
