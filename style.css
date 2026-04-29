@@ -102,54 +102,13 @@ body{
   }
 }
 
+@keyframes pulseGreen {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; box-shadow: 0 0 10px var(--green); }
+    100% { opacity: 0.6; }
+}
+
 /* ================= LOGIN ================= */
-/* Separator "na" */
-.separator {
-    margin: 25px 0;
-    position: relative;
-    text-align: center;
-}
-
-.separator::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--line), transparent);
-}
-
-.separator span {
-    position: relative;
-    background: #111; /* Mba tsy hotsindrin'ny tsipika ny soratra */
-    padding: 0 15px;
-    color: var(--muted);
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-/* Bokotra Guest */
-.btn-login-guest {
-    width: 100%;
-    border: 1px solid var(--pink);
-    outline: none;
-    padding: 16px;
-    border-radius: 16px;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--pink);
-    background: rgba(255, 0, 127, 0.05);
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.btn-login-guest:hover {
-    background: rgba(255, 0, 127, 0.15);
-    box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
-    transform: translateY(-2px);
-}
 #login-screen{
   padding:30px;
 }
@@ -198,86 +157,61 @@ body{
   box-shadow:0 10px 30px rgba(255,0,127,.35);
 }
 
+/* Separator "na" */
+.separator {
+    margin: 25px 0;
+    position: relative;
+    text-align: center;
+}
+
+.separator::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+}
+
+.separator span {
+    position: relative;
+    background: #111;
+    padding: 0 15px;
+    color: var(--muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Bokotra Guest */
+.btn-login-guest {
+    width: 100%;
+    border: 1px solid var(--pink);
+    outline: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--pink);
+    background: rgba(255, 0, 127, 0.05);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-login-guest:hover {
+    background: rgba(255, 0, 127, 0.15);
+    box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
+    transform: translateY(-2px);
+}
+
 /* ================= LOBBY ================= */
 #lobby-screen{
   display:flex;
   gap:20px;
   padding:18px;
 }
-/* Layout an'ny Lobby Sections */
-.content-scroll {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Colone 2 mitovy habe */
-    gap: 20px;
-    flex: 1;
-    padding: 0 16px 16px 16px;
-}
 
-.lobby-section {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.lobby-section h3 {
-    font-size: 15px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--pink);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* Badge miandry (Indicator) */
-.badge-waiting {
-    font-size: 11px;
-    background: rgba(0, 255, 157, 0.1);
-    color: var(--green);
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 255, 157, 0.2);
-    animation: pulseGreen 2s infinite;
-}
-
-@keyframes pulseGreen {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; box-shadow: 0 0 10px var(--green); }
-    100% { opacity: 0.6; }
-}
-
-/* Fanamboarana ny Room Card ao anaty colone */
-.room-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    transition: 0.25s;
-}
-
-.room-card:hover {
-    border-color: var(--pink);
-    background: var(--card2);
-    transform: translateX(5px);
-}
-
-.room-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.btn-cancel {
-    background: rgba(255, 59, 107, 0.1);
-    color: var(--danger);
-    border: 1px solid rgba(255, 59, 107, 0.2);
-    padding: 8px 12px;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.btn-cancel:hover {
-    background: var(--danger);
-    color: #fff;
-}
 /* ================= SIDEBAR ================= */
 .sidebar{
   width:320px;
@@ -344,6 +278,9 @@ body{
   display:flex;
   align-items:center;
   gap:8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--pink);
 }
 
 /* ================= PLAYER LIST ================= */
@@ -483,11 +420,12 @@ body{
   color:#888;
 }
 
-.content-scroll{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-  flex:1;
+.content-scroll {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    flex: 1;
+    padding: 0 16px 16px 16px;
 }
 
 /* ================= ROOM CARD ================= */
@@ -500,6 +438,14 @@ body{
   margin-bottom:12px;
   border-radius:16px;
   background:rgba(255,255,255,.03);
+  border: 1px solid var(--line);
+  transition: 0.25s;
+}
+
+.room-card:hover {
+    border-color: var(--pink);
+    background: var(--card2);
+    transform: translateX(5px);
 }
 
 .room-card span{
@@ -514,6 +460,37 @@ body{
   font-weight:700;
   cursor:pointer;
   background:linear-gradient(90deg,var(--pink),var(--violet));
+}
+
+.room-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-cancel {
+    background: rgba(255, 59, 107, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(255, 59, 107, 0.2);
+    padding: 8px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-cancel:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+/* Badge miandry */
+.badge-waiting {
+    font-size: 11px;
+    background: rgba(0, 255, 157, 0.1);
+    color: var(--green);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 255, 157, 0.2);
+    animation: pulseGreen 2s infinite;
 }
 
 /* ================= GAME SCREEN ================= */
@@ -532,6 +509,7 @@ body{
   justify-content:space-between;
   align-items:center;
   margin-bottom:20px;
+  gap: 10px;
 }
 
 .btn-exit{
@@ -549,6 +527,24 @@ body{
   padding:10px 14px;
   border-radius:14px;
   background:linear-gradient(90deg,var(--pink),var(--violet));
+  flex: 1;
+  text-align: center;
+}
+
+#turn-timer {
+    font-weight: 700;
+    color: var(--green);
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(0,255,157,.1);
+    border: 1px solid rgba(0,255,157,.2);
+}
+
+.my-turn { 
+    background: linear-gradient(90deg,var(--green),#00d4aa) !important; 
+}
+.opp-turn { 
+    background: rgba(255,255,255,.1) !important; 
 }
 
 /* ================= GRID ================= */
@@ -559,18 +555,14 @@ body{
     width: 300px;
     height: 300px;
     position: relative;
-    background: 
-        /* Tsipika mandry */
-        linear-gradient(to bottom, transparent 49%, #8b00ff 50%, transparent 51%) 0 0 / 100% 100%,
-        linear-gradient(to bottom, transparent 0%, #8b00ff 1%, transparent 2%) 0 0 / 100% 100%,
-        linear-gradient(to top, transparent 0%, #8b00ff 1%, transparent 2%) 0 0 / 100% 100%,
-        /* Tsipika mitsangana */
-        linear-gradient(to right, transparent 49%, #8b00ff 50%, transparent 51%) 0 0 / 100% 100%,
-        linear-gradient(to right, transparent 0%, #8b00ff 1%, transparent 2%) 0 0 / 100% 100%,
-        linear-gradient(to left, transparent 0%, #8b00ff 1%, transparent 2%) 0 0 / 100% 100%,
-        /* Diagonales */
-        linear-gradient(to top right, transparent 49.5%, #8b00ff 50%, transparent 50.5%) 0 0 / 100% 100%,
-        linear-gradient(to top left, transparent 49.5%, #8b00ff 50%, transparent 50.5%) 0 0 / 100% 100%;
+    margin: 0 auto;
+    background-image: 
+        linear-gradient(to right, var(--violet) 2px, transparent 2px),
+        linear-gradient(to bottom, var(--violet) 2px, transparent 2px),
+        linear-gradient(to top right, transparent calc(50% - 1px), var(--violet) 2px, transparent calc(50% + 1px)),
+        linear-gradient(to top left, transparent calc(50% - 1px), var(--violet) 2px, transparent calc(50% + 1px));
+    background-size: 50% 100%, 100% 50%, 100% 100%, 100% 100%;
+    background-position: 50% 0, 0 50%, 0 0, 0 0;
     background-repeat: no-repeat;
 }
 
@@ -578,15 +570,20 @@ body{
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2; /* Ambony tsipika ny vato */
+    z-index: 2;
+    cursor: pointer;
+    transition: 0.2s;
 }
 
-/* Ny vato izao dia kely kokoa ary boribory tsara */
+.active-spot {
+    background: rgba(255,0,127,.2) !important;
+    border-radius: 50%;
+}
+
 .stone {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    box-shadow: 0 0 15px currentColor;
 }
 
 .black-stone{
@@ -603,6 +600,45 @@ body{
   box-shadow:
   inset -8px -8px 12px rgba(0,0,0,.18),
   0 0 18px rgba(139,0,255,.35);
+}
+
+/* ================= CHAT ================= */
+.chat-container {
+    margin-top: 20px;
+    padding: 15px;
+}
+#chat-messages {
+    height: 120px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+.chat-me { 
+    text-align: right; 
+    color: var(--pink); 
+    margin-bottom: 5px;
+}
+.chat-opp { 
+    text-align: left; 
+    color: var(--violet); 
+    margin-bottom: 5px;
+}
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+}
+#chat-input {
+    flex: 1;
+    margin-bottom: 0;
+}
+#chat-send {
+    border: none;
+    padding: 14px;
+    border-radius: 14px;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(90deg,var(--pink),var(--violet));
 }
 
 /* ================= MODAL ================= */
@@ -740,6 +776,12 @@ input::placeholder{
   }
 
   #fanorona-grid{
-    gap:10px;
+    width: 270px;
+    height: 270px;
+  }
+  
+  .stone {
+    width: 35px;
+    height: 35px;
   }
 }
