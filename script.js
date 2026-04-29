@@ -327,6 +327,7 @@ function renderRoomLobby(room, roomId) {
     const lobbyEl = document.getElementById("room-lobby-content");
     const isCreator = room.creator.id === getUserId();
     const isFull = room.opponent?.id;
+    const isPlayingWithAI = room.opponent?.id === 'AI_BOT';
     
     lobbyEl.innerHTML = `
         <div class="room-lobby-header">
@@ -347,10 +348,12 @@ function renderRoomLobby(room, roomId) {
                 ${isFull ? `
                     <img src="${room.opponent.avatar}" class="player-img-large">
                     <h3>${room.opponent.name}</h3>
+                    ${isPlayingWithAI ? '<span class="badge-ai">🤖 AI</span>' : ''}
                 ` : `
                     <div class="waiting-player">
                         <div class="spinner"></div>
-                        <p>Miandry mpilalao...</p>
+                        <p>Miandry mpifanandrina...</p>
+                        ${isCreator ? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
                     </div>
                 `}
             </div>
@@ -366,7 +369,6 @@ function renderRoomLobby(room, roomId) {
         </div>
     `;
 }
-
 window.startGame = async (roomId) => {
     await updateDoc(doc(db, "rooms", roomId), {
         status: "playing",
@@ -400,6 +402,20 @@ window.joinRoom = async (id) => {
         }
     });
     // Tsy mila enterGame eto fa ny onSnapshot no hitantana azy
+};
+window.playWithAI = async (roomId) => {
+    const roomRef = doc(db, "rooms", roomId);
+    await updateDoc(roomRef, {
+        opponent: { 
+            id: 'AI_BOT', 
+            name: 'NOLIMITE AI', 
+            avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI'
+        },
+        status: "playing",
+        board: initBoard(),
+        turn: getUserId() // Ianao no manomboka foana
+    });
+    playSound('invite');
 };
 // ================= PROFILE EDIT =================
 window.openEditModal = () => {
