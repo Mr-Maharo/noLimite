@@ -22,7 +22,28 @@ import {
     getDoc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
 
+exports.deleteOldRooms = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
+    const db = admin.firestore();
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const snapshot = await db.collection('rooms')
+        .where('status', '==', 'waiting')
+        .where('createdAt', '<', fiveMinutesAgo)
+        .get();
+    
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    console.log(`Deleted ${snapshot.size} old rooms`);
+    return null;
+});
 // ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
