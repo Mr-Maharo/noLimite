@@ -275,6 +275,7 @@ function initLobby() {
                                 <span>🏠 ${roomId}</span>
                                 <div class="room-actions">
                                     <button class="btn-cancel" onclick="deleteRoom('${roomId}')">🗑️</button>
+                                    <button onclick="viewRoom('${roomId}')">Hiditra</button>
                                 </div>
                             </div>`;
                     }
@@ -284,7 +285,7 @@ function initLobby() {
                             <div class="room-card glass animate-pop">
                                 <span>${isPrivate} ${roomId}</span>
                                 ${playerBadge}
-                                <button onclick="joinRoom('${roomId}')">Hiditra</button>
+                                <button onclick="viewRoom('${roomId}')">Hijery</button>
                             </div>`;
                     }
                 }
@@ -292,7 +293,114 @@ function initLobby() {
         });
     });
 }
+// ================= ROOM LOBBY =================
+window.viewRoom = async (id) => {
+    const roomRef = doc(db, "rooms", id);
+    const roomSnap = await getDoc(roomRef);
+    if (!roomSnap.exists()) return alert("Tsy misy io efitra io");
+    
+    const r = roomSnap.data();
+    
+    // Raha private dia mangataka password
+    if (r.type === "private" && r.creator.id !== getUserId()) {
+        if (prompt("Teny miafina:") !== r.password) return alert("Diso!");
+    }
 
+    currentRoomId = id;
+    document.getElementById("lobby-screen").classList.add("hidden");
+    document.getElementById("room-lobby-screen").classList.remove("hidden");
+    
+    // Listener ny room
+    onSnapshot(roomRef, (snap) => {
+        const game = snap.data();
+        if (!game) return;
+        renderRoomLobby(game, id);
+        
+        // Raha efa 2 ny mpilalao dia miditra automatique
+        if (game.status === "playing") {
+            enterGame(id);
+        }
+    });
+};
+
+function renderRoomLobby(room, roomId) {
+    const lobbyEl = document.getElementById("room-lobby-content");
+    const isCreator = room.creator.id === getUserId();
+    const isFull = room.opponent?.id;
+    
+    lobbyEl.innerHTML = `
+        <div class="room-lobby-header">
+            <h2>🏠 ${roomId}</h2>
+            <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
+        </div>
+        
+        <div class="players-vs">
+            <div class="player-slot ${isCreator ? 'you' : ''}">
+                <img src="${room.creator.avatar}" class="player-img-large">
+                <h3>${room.creator.name}</h3>
+                <span class="badge-host">Mpamorona</span>
+            </div>
+            
+            <div class="vs-text">VS</div>
+            
+            <div class="player-slot ${!isCreator && isFull ? 'you' : ''}">
+                ${isFull ? `
+                    <img src="${room.opponent.avatar}" class="player-img-large">
+                    <h3>${room.opponent.name}</h3>
+                ` : `
+                    <div class="waiting-player">
+                        <div class="spinner"></div>
+                        <p>Miandry mpilalao...</p>
+                    </div>
+                `}
+            </div>
+        </div>
+        
+        <div class="lobby-actions">
+            ${isCreator ? `
+                ${isFull ? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
+                <button onclick="deleteRoom('${roomId}')" class="btn-cancel">🗑️ Fafao ny efitra</button>
+            ` : `
+                ${!isFull ? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
+            `}
+        </div>
+    `;
+}
+
+window.startGame = async (roomId) => {
+    await updateDoc(doc(db, "rooms", roomId), {
+        status: "playing",
+        board: initBoard(),
+        turn: getUserId()
+    });
+};
+
+window.leaveRoomLobby = () => {
+    document.getElementById("room-lobby-screen").classList.add("hidden");
+    document.getElementById("lobby-screen").classList.remove("hidden");
+    currentRoomId = null;
+};
+
+window.joinRoom = async (id) => {
+    const uid = getUserId();
+    if (!uid) return alert("Tsy tafiditra ianao");
+
+    const roomRef = doc(db, "rooms", id);
+    const roomSnap = await getDoc(roomRef);
+    if (!roomSnap.exists()) return;
+    const r = roomSnap.data();
+
+    if (r.opponent?.id) return alert("Efa feno ity efitra ity");
+
+    await updateDoc(roomRef, {
+        opponent: { 
+            id: uid, 
+            name: document.getElementById("user-name").innerText, 
+            avatar: document.getElementById("user-avatar").src 
+        }
+    });
+    // Tsy mila enterGame eto fa ny onSnapshot no hitantana azy
+};
 // ================= PROFILE EDIT =================
 window.openEditModal = () => {
     document.getElementById("edit-name").value = document.getElementById("user-name").innerText;
