@@ -39,7 +39,7 @@ const provider = new GoogleAuthProvider();
 
 let currentRoomId = null;
 let selectedCell = null;
-
+let myCurrentUid = null; 
 // ================= LOGIN GUEST =================
 document.getElementById("btn-guest").onclick = async () => {
     // 1. Mijery raha efa misy Guest ID voatahiry
@@ -53,7 +53,9 @@ document.getElementById("btn-guest").onclick = async () => {
         localStorage.setItem("nolimite_guest_uid", guestUid);
         localStorage.setItem("nolimite_guest_name", guestName);
     }
-
+myCurrentUid = guestUid; // Tehirizina ny ID
+    setupGuestUI(guestData);
+};
     // 2. Misandoka ho "Auth User" (satria tsy mampiasa Firebase Auth isika eto)
     const guestData = {
         uid: guestUid,
@@ -85,6 +87,7 @@ function setupGuestUI(user) {
 // ================= AUTH & USER STATE =================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
+        
         document.getElementById("login-screen").classList.add("hidden");
         document.getElementById("lobby-screen").classList.remove("hidden");
 
@@ -224,11 +227,13 @@ async function initPlayerList() {
     onSnapshot(q, (snapshot) => {
         const listSidebar = document.getElementById("online-players");
         const listMain = document.getElementById("players-list-dynamic");
-        listSidebar.innerHTML = ""; listMain.innerHTML = "";
+        if (listSidebar) listSidebar.innerHTML = ""; 
+        if (listMain) listMain.innerHTML = "";
 
         snapshot.forEach((doc) => {
             const userData = doc.data();
-            if (userData.uid !== auth.currentUser.uid) {
+            // Jereo tsara eto: mampiasa myCurrentUid
+            if (userData.uid !== myCurrentUid) {
                 const html = `
                     <div class="player-item">
                         <img src="${userData.avatar}" class="player-avatar-mini">
@@ -238,8 +243,8 @@ async function initPlayerList() {
                         </div>
                         <button class="btn-invite-mini" onclick="sendInvite('${userData.uid}')">Hantsy</button>
                     </div>`;
-                listSidebar.innerHTML += html;
-                listMain.innerHTML += html;
+                if (listSidebar) listSidebar.innerHTML += html;
+                if (listMain) listMain.innerHTML += html;
             }
         });
     });
@@ -247,9 +252,9 @@ async function initPlayerList() {
 
 function initLobby() {
     onSnapshot(collection(db, "rooms"), (snap) => {
-        const publicList = document.getElementById("rooms-list-dynamic"); // Colone 1
-        const myRoomsList = document.getElementById("my-rooms-list"); // Colone 2 (Mila ampidirina ao anaty HTML ity id ity)
-        
+        const publicList = document.getElementById("rooms-list-dynamic");
+        const myRoomsList = document.getElementById("my-rooms-list");
+
         if (publicList) publicList.innerHTML = "";
         if (myRoomsList) myRoomsList.innerHTML = "";
 
@@ -260,14 +265,14 @@ function initLobby() {
                 const isPrivate = r.type === "private" ? "🔒" : "🌐";
                 const playerBadge = `<span class="badge-waiting">● 1/2 miandry</span>`;
 
-                if (r.creator.id === auth.currentUser.uid) {
+                // Jereo tsara eto koa: mampiasa myCurrentUid
+                if (r.creator.id === myCurrentUid) {
                     if (myRoomsList) {
                         myRoomsList.innerHTML += `
                             <div class="room-card glass animate-pop">
                                 <span>🏠 ${roomId}</span>
                                 <div class="room-actions">
-                                    <button onclick="sendInviteModal('${roomId}')">📧 Hantsy</button>
-                                    <button class="btn-cancel" style="padding:5px" onclick="deleteRoom('${roomId}')">🗑️</button>
+                                    <button class="btn-cancel" onclick="deleteRoom('${roomId}')">🗑️</button>
                                 </div>
                             </div>`;
                     }
