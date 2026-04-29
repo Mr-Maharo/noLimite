@@ -21,8 +21,91 @@
   --glow-pink:0 0 20px rgba(255,0,128,.4);
   --glow-violet:0 0 20px rgba(138,0,255,.4);
 }
+/* ================= MOBILE OPTIMIZATIONS ================= */
+@media(max-width:500px){
+  .auth-card{
+    padding:35px 25px;
+  }
+  
+  .logo{
+    font-size:36px;
+  }
 
+  .sidebar{
+    padding:15px;
+  }
+
+  .content-scroll {
+    grid-template-columns: 1fr;
+    padding: 0 12px 12px 12px;
+  }
+
+  .game-container{
+    padding:18px;
+  }
+
+  #fanorona-grid{
+    width: 260px;
+    height: 260px;
+  }
+  
+  .stone {
+    width: 34px;
+    height: 34px;
+  }
+
+  .room-lobby-container{
+    padding:20px;
+  }
+
+  .player-slot{
+    min-width:150px;
+    padding:18px;
+  }
+
+  .player-img-large{
+    width:70px;
+    height:70px;
+  }
+}
+
+/* Aza zoom ny input @ iOS */
+@media screen and (-webkit-min-device-pixel-ratio:0) { 
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Disable text selection @ game */
+#fanorona-grid, .stone {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
 /* ================= RESET ================= */
+#game-screen{
+  padding:20px;
+  height:100vh;
+  height:100dvh; /* Dynanic viewport ho an'ny mobile */
+}
+
+.chat-container {
+    margin-top: 20px;
+    padding: 15px;
+    max-height: 30vh; /* Aza lava be @ mobile */
+}
+@media(min-width:1400px){
+  #fanorona-grid{
+    width: 400px;
+    height: 400px;
+  }
+  .stone {
+    width: 52px;
+    height: 52px;
+  }
+}
 *{
   margin:0;
   padding:0;
