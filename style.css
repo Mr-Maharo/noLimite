@@ -18,7 +18,122 @@
   --danger:#ff3b6b;
   --shadow:0 0 25px rgba(139,0,255,.25);
 }
+/* ================= ROOM LOBBY ================= */
+.room-lobby-container {
+    width: 600px;
+    max-width: 95%;
+    padding: 30px;
+}
 
+.room-lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.room-lobby-header h2 {
+    font-family: Orbitron, sans-serif;
+    background: linear-gradient(90deg,var(--pink),var(--violet));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.players-vs {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin: 40px 0;
+}
+
+.player-slot {
+    text-align: center;
+    padding: 20px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.03);
+    min-width: 180px;
+}
+
+.player-slot.you {
+    border: 2px solid var(--pink);
+    box-shadow: 0 0 20px rgba(255,0,127,.3);
+}
+
+.player-img-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    border: 3px solid var(--violet);
+}
+
+.badge-host {
+    font-size: 12px;
+    background: var(--pink);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 8px;
+    display: inline-block;
+}
+
+.vs-text {
+    font-size: 32px;
+    font-weight: 900;
+    font-family: Orbitron, sans-serif;
+    color: var(--violet);
+}
+
+.waiting-player {
+    padding: 20px 0;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--line);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.lobby-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.btn-primary-large {
+    border: none;
+    padding: 18px;
+    border-radius: 16px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    background: linear-gradient(90deg,var(--pink),var(--violet));
+    transition: 0.3s;
+}
+
+.btn-primary-large:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255,0,127,.35);
+}
+
+@media(max-width:700px){
+    .players-vs {
+        flex-direction: column;
+        gap: 20px;
+    }
+    .vs-text {
+        transform: rotate(90deg);
+    }
+}
 /* ================= RESET ================= */
 *{
   margin:0;
