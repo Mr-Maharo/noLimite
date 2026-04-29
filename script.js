@@ -197,7 +197,58 @@ function initLobby() {
         });
     });
 }
+// --- HANOKAFANA NY MODAL ---
+window.openEditModal = () => {
+    // Alaina ny anarana sy sary efa eo amin'ny UI ankehitriny
+    const currentName = document.getElementById("user-name").innerText;
+    const currentAvatar = document.getElementById("user-avatar").src;
+    
+    // Ampidirina ao anaty input-n'ny modal
+    document.getElementById("edit-name").value = currentName;
+    document.getElementById("edit-avatar").value = currentAvatar;
+    
+    // Asehoy ilay modal (esorina ilay class .hidden)
+    document.getElementById("modal-edit-profile").classList.remove("hidden");
+};
 
+// --- HANAKATONANA NY MODAL ---
+window.closeEditModal = () => {
+    document.getElementById("modal-edit-profile").classList.add("hidden");
+};
+
+// --- HITAHIRIZANA NY FANOVANA (SAVE) ---
+document.getElementById("btn-save-profile").onclick = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    let newName = document.getElementById("edit-name").value.trim();
+    const newAvatar = document.getElementById("edit-avatar").value.trim();
+
+    // Fanadihadiana (Validation)
+    if (newName.length === 0 || newName.length > 8) {
+        alert("Anarana 1 hatramin'ny 8 litera ihany azafady!");
+        return;
+    }
+
+    try {
+        // 1. Havaozina ao amin'ny Firestore
+        await updateDoc(doc(db, "users", user.uid), {
+            name: newName,
+            avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.uid
+        });
+
+        // 2. Havaozina avy hatrany ny UI (Sidebar)
+        document.getElementById("user-name").innerText = newName;
+        document.getElementById("user-avatar").src = newAvatar;
+
+        alert("Vita soa aman-tsara ny fanovana!");
+        closeEditModal();
+        
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        alert("Tsy nety ny fanovana, jereo ny fifandraisana.");
+    }
+};
 // ================= GAME LOGIC =================
 function initBoard() {
     let b = [];
