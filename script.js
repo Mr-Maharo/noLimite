@@ -861,4 +861,74 @@ document.getElementById("btn-quick-play").onclick = async () => {
 
     snap.forEach(d => {
         const r = d.data();
-        if (r.creator.id!== uid && r.type!==
+           if (r.creator.id!== uid && r.type!== "private") {
+            foundRoom = d.id;
+        }
+    });
+
+    if (foundRoom) {
+        viewRoom(foundRoom);
+    } else {
+        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
+        await setDoc(doc(db, "rooms", autoId), {
+            creator: {
+                id: uid,
+                name: document.getElementById("user-name").innerText,
+                avatar: document.getElementById("user-avatar").src
+            },
+            status: "waiting",
+            type: "public",
+            createdAt: serverTimestamp()
+        });
+        autoDeleteRoom(autoId);
+        viewRoom(autoId);
+    }
+};
+
+// ================= ROOM CREATION =================
+document.getElementById("btn-confirm-create").onclick = async () => {
+    const uid = getUserId();
+    if (!uid) return;
+
+    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
+    const type = document.getElementById("room-type").value;
+    const pass = document.getElementById("room-password").value;
+
+    await setDoc(doc(db, "rooms", name), {
+        creator: {
+            id: uid,
+            name: document.getElementById("user-name").innerText,
+            avatar: document.getElementById("user-avatar").src
+        },
+        status: "waiting",
+        type: type,
+        password: pass,
+        createdAt: serverTimestamp()
+    });
+
+    autoDeleteRoom(name);
+    document.getElementById("modal-create").classList.add("hidden");
+    viewRoom(name);
+};
+
+// ================= LOGOUT =================
+document.getElementById("btn-logout").onclick = async () => {
+    if (confirm("Hivoaka ve ianao?")) {
+        unsubscribeAll();
+        const uid = getUserId();
+        if (uid) {
+            await updateDoc(doc(db, "users", uid), { status: "offline" });
+        }
+        await auth.signOut();
+        localStorage.removeItem("nolimite_guest_uid");
+        localStorage.removeItem("nolimite_guest_name");
+        location.reload();
+    }
+};
+
+// ================= EXIT BUTTON LALAO =================
+document.querySelector("#game-screen .btn-exit").onclick = () => {
+    if (confirm("Hiala amin'ny lalao ve ianao?")) {
+        leaveGame();
+    }
+};
