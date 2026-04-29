@@ -83,35 +83,40 @@ document.getElementById("btn-guest").onclick = async () => {
 };
 // ================= LOGIN GUEST =================
 document.getElementById("btn-guest").onclick = async () => {
-    // 1. Mijery raha efa misy Guest ID voatahiry
+    // 1. Fakana data avy amin'ny LocalStorage
     let guestUid = localStorage.getItem("nolimite_guest_uid");
     let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
     let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
 
     if (!guestUid) {
-        // Raha vao voalohany dia mamorona ID vaovao
         guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
         localStorage.setItem("nolimite_guest_uid", guestUid);
         localStorage.setItem("nolimite_guest_name", guestName);
     }
-myCurrentUid = guestUid; // Tehirizina ny ID
-    setupGuestUI(guestData);
-};
-    // 2. Misandoka ho "Auth User" (satria tsy mampiasa Firebase Auth isika eto)
+
+    // 2. Tehirizina amin'ny variable global
+    myCurrentUid = guestUid; 
+
     const guestData = {
         uid: guestUid,
         name: guestName,
         avatar: guestAvatar,
         status: "online",
-        isGuest: true // famantarana fa guest izy
+        isGuest: true,
+        lastSeen: serverTimestamp()
     };
 
-    // 3. Mitahiry azy ao amin'ny Firestore mba ho hitan'ny hafa ao amin'ny Lobby
-    await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
-
-    // 4. Manokatra ny Lobby
-    setupGuestUI(guestData);
-};
+    try {
+        await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
+        setupGuestUI(guestData);
+        
+        // Alefa ny lisitra
+        initLobby();
+        initPlayerList();
+    } catch (e) {
+        console.error("Login Guest Error: ", e);
+    }
+}; // Eto ihany no misy }; iray fotsiny
 
 function setupGuestUI(user) {
     document.getElementById("login-screen").classList.add("hidden");
