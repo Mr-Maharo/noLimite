@@ -486,16 +486,36 @@ function render(game) {
     game.board.forEach(cell => {
         const div = document.createElement("div");
         div.className = "grid-spot" + (selectedCell?.id === cell.id? " active-spot" : "");
+        
         if (cell.value) {
             const stone = document.createElement("div");
-            stone.className = `stone ${cell.value === 1? 'black-stone' : 'white-stone'}`;
+            stone.className = `stone ${cell.value === 1? 'black-stone' : 'white-stone'} animate-pop`;
             div.appendChild(stone);
         }
-        div.onclick = () => handleMove(cell, game);
+
+        // ITO NO VAOVAO: soloinao ilay div.onclick taloha
+        div.onclick = null; // Fafana aloha
+        div.addEventListener('click', () => {
+            playSound('click');
+            handleMove(cell, game);
+        });
+        div.addEventListener('touchend', (e) => {
+            e.preventDefault(); // Sakana ny click fanindroany
+            playSound('click');
+            handleMove(cell, game);
+        });
+        
         grid.appendChild(div);
     });
-}
 
+    // Aseho hoe iza no tour
+    const turnEl = document.getElementById("turn-indicator");
+    if (turnEl) {
+        const isMyTurn = game.turn === getUserId();
+        turnEl.innerText = isMyTurn? "Anjaranao!" : "Anjaran'ny fahavalo";
+        turnEl.className = isMyTurn? "my-turn" : "opp-turn";
+    }
+}
 async function handleMove(cell, game) {
     const uid = getUserId();
     if (game.turn!== uid) return;
