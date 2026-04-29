@@ -40,6 +40,48 @@ const provider = new GoogleAuthProvider();
 let currentRoomId = null;
 let selectedCell = null;
 
+// ================= LOGIN GUEST =================
+document.getElementById("btn-guest").onclick = async () => {
+    // 1. Mijery raha efa misy Guest ID voatahiry
+    let guestUid = localStorage.getItem("nolimite_guest_uid");
+    let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
+    let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
+
+    if (!guestUid) {
+        // Raha vao voalohany dia mamorona ID vaovao
+        guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        localStorage.setItem("nolimite_guest_uid", guestUid);
+        localStorage.setItem("nolimite_guest_name", guestName);
+    }
+
+    // 2. Misandoka ho "Auth User" (satria tsy mampiasa Firebase Auth isika eto)
+    const guestData = {
+        uid: guestUid,
+        name: guestName,
+        avatar: guestAvatar,
+        status: "online",
+        isGuest: true // famantarana fa guest izy
+    };
+
+    // 3. Mitahiry azy ao amin'ny Firestore mba ho hitan'ny hafa ao amin'ny Lobby
+    await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
+
+    // 4. Manokatra ny Lobby
+    setupGuestUI(guestData);
+};
+
+function setupGuestUI(user) {
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("lobby-screen").classList.remove("hidden");
+    
+    document.getElementById("user-name").innerText = user.name;
+    document.getElementById("user-avatar").src = user.avatar;
+
+    // Alefa ny Lobby sy ny sisa (tsy mampiasa auth.currentUser intsony eto)
+    // Mila ovaina kely ny kaody hafa mba hanaiky an'ity guest UID ity
+    initLobby();
+    initPlayerList();
+}
 // ================= AUTH & USER STATE =================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
