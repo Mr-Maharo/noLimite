@@ -103,6 +103,53 @@ body{
 }
 
 /* ================= LOGIN ================= */
+/* Separator "na" */
+.separator {
+    margin: 25px 0;
+    position: relative;
+    text-align: center;
+}
+
+.separator::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+}
+
+.separator span {
+    position: relative;
+    background: #111; /* Mba tsy hotsindrin'ny tsipika ny soratra */
+    padding: 0 15px;
+    color: var(--muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Bokotra Guest */
+.btn-login-guest {
+    width: 100%;
+    border: 1px solid var(--pink);
+    outline: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--pink);
+    background: rgba(255, 0, 127, 0.05);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-login-guest:hover {
+    background: rgba(255, 0, 127, 0.15);
+    box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
+    transform: translateY(-2px);
+}
 #login-screen{
   padding:30px;
 }
@@ -157,7 +204,80 @@ body{
   gap:20px;
   padding:18px;
 }
+/* Layout an'ny Lobby Sections */
+.content-scroll {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Colone 2 mitovy habe */
+    gap: 20px;
+    flex: 1;
+    padding: 0 16px 16px 16px;
+}
 
+.lobby-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.lobby-section h3 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--pink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Badge miandry (Indicator) */
+.badge-waiting {
+    font-size: 11px;
+    background: rgba(0, 255, 157, 0.1);
+    color: var(--green);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 255, 157, 0.2);
+    animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; box-shadow: 0 0 10px var(--green); }
+    100% { opacity: 0.6; }
+}
+
+/* Fanamboarana ny Room Card ao anaty colone */
+.room-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    transition: 0.25s;
+}
+
+.room-card:hover {
+    border-color: var(--pink);
+    background: var(--card2);
+    transform: translateX(5px);
+}
+
+.room-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-cancel {
+    background: rgba(255, 59, 107, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(255, 59, 107, 0.2);
+    padding: 8px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-cancel:hover {
+    background: var(--danger);
+    color: #fff;
+}
 /* ================= SIDEBAR ================= */
 .sidebar{
   width:320px;
