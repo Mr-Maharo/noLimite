@@ -30,10 +30,14 @@ const supabase = createClient(
 );
 // ================= CONFIG =================
 const firebaseConfig = {
-    apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
-    authDomain: "nolimite-29e0b.firebaseapp.com",
-    projectId: "nolimite-29e0b",
-    databaseURL: "https://nolimite-29e0b-default-rtdb.europe-west1.firebasedatabase.app"
+  apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
+  authDomain: "fanorona-d6911.firebaseapp.com",
+  databaseURL: "https://fanorona-d6911-default-rtdb.firebaseio.com",
+  projectId: "fanorona-d6911",
+  storageBucket: "fanorona-d6911.firebasestorage.app",
+  messagingSenderId: "882799309556",
+  appId: "1:882799309556:web:662773f9fcc8ad982ca4a1",
+  measurementId: "G-DL0KC683X8"
 };
 
 const app = initializeApp(firebaseConfig);
