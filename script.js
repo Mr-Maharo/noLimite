@@ -49,19 +49,10 @@ let unsubscribeChat = null;
 let unsubscribePlayers = null;
 let unsubscribeRooms = null;
 
-// ================= SOUND =================
-const sounds = {
-    click: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_2c8d2e3e4d.mp3'),
-    invite: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_5a6b7c8d9e.mp3'),
-    win: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_1a2b3c4d5e.mp3'),
-    capture: new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_9e8d7c6b5a.mp3')
-};
-
+// ================= SOUND - ATAO MUTE FA 403 =================
 function playSound(type) {
-    if (sounds[type]) {
-        sounds[type].currentTime = 0;
-        sounds[type].play().catch(e => {});
-    }
+    // Esorina aloha fa 403 ny CDN
+    // Azonao soloina base64 na file-nao manokana
 }
 
 // ================= HELPER =================
@@ -81,34 +72,46 @@ function unsubscribeAll() {
 // ================= PRESENCE =================
 function setupPresence(uid) {
     const userRef = doc(db, "users", uid);
-    updateDoc(userRef, { status: "online", lastSeen: serverTimestamp() });
+    updateDoc(userRef, { status: "online", lastSeen: serverTimestamp() }).catch(() => {});
     window.addEventListener("beforeunload", () => {
-        updateDoc(userRef, { status: "offline" });
+        updateDoc(userRef, { status: "offline" }).catch(() => {});
     });
     setInterval(() => {
-        updateDoc(userRef, { lastSeen: serverTimestamp() });
+        updateDoc(userRef, { lastSeen: serverTimestamp() }).catch(() => {});
     }, 30000);
 }
 
-// ================= FANORONTELO LOGIC =================
-function initBoard() {
-    return [
-        { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 },
-        { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 },
-        { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }
-    ];
+// ================= BOARD INIT =================
+function initBoard(gameType) {
+    if (gameType === "fanorontsivy") {
+        return [
+            { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 }, { id: 3, x: 3, y: 0, value: 1 }, { id: 4, x: 4, y: 0, value: 1 },
+            { id: 5, x: 0, y: 1, value: 1 }, { id: 6, x: 1, y: 1, value: 1 }, { id: 7, x: 2, y: 1, value: 1 }, { id: 8, x: 3, y: 1, value: 1 }, { id: 9, x: 4, y: 1, value: 1 },
+            { id: 10, x: 0, y: 2, value: 0 }, { id: 11, x: 1, y: 2, value: 0 }, { id: 12, x: 2, y: 2, value: 0 }, { id: 13, x: 3, y: 2, value: 0 }, { id: 14, x: 4, y: 2, value: 0 },
+            { id: 15, x: 0, y: 3, value: 2 }, { id: 16, x: 1, y: 3, value: 2 }, { id: 17, x: 2, y: 3, value: 2 }, { id: 18, x: 3, y: 3, value: 2 }, { id: 19, x: 4, y: 3, value: 2 },
+            { id: 20, x: 0, y: 4, value: 2 }, { id: 21, x: 1, y: 4, value: 2 }, { id: 22, x: 2, y: 4, value: 2 }, { id: 23, x: 3, y: 4, value: 2 }, { id: 24, x: 4, y: 4, value: 2 }
+        ];
+    } else {
+        return [
+            { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 },
+            { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 },
+            { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }
+        ];
+    }
 }
 
-function getCaptures(board, fromCell, toCell, myVal) {
+// ================= FANORONA LOGIC =================
+function getCaptures(board, fromCell, toCell, myVal, gameType) {
+    const maxSize = gameType === "fanorontsivy"? 4 : 2;
     const opponentVal = myVal === 1? 2 : 1;
     const captured = [];
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
 
-    // PAIKA - approach
+    // PAIKA
     let nx = toCell.x + dx;
     let ny = toCell.y + dy;
-    while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
+    while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
         if (!nextCell || nextCell.value!== opponentVal) break;
         captured.push(nextCell.id);
@@ -116,10 +119,10 @@ function getCaptures(board, fromCell, toCell, myVal) {
         ny += dy;
     }
 
-    // VELA - withdrawal
+    // VELA
     nx = fromCell.x - dx;
     ny = fromCell.y - dy;
-    while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
+    while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
         if (!nextCell || nextCell.value!== opponentVal) break;
         captured.push(nextCell.id);
@@ -130,7 +133,7 @@ function getCaptures(board, fromCell, toCell, myVal) {
     return [...new Set(captured)];
 }
 
-function checkWinnerFanorona(board, creatorId, opponentId) {
+function checkWinnerFanorona(board, creatorId, opponentId, gameType) {
     const creatorStones = board.filter(c => c.value === 1).length;
     const opponentStones = board.filter(c => c.value === 2).length;
     if (creatorStones === 0) return opponentId;
@@ -172,7 +175,7 @@ async function aiMove(game) {
             const dx = Math.abs(empty.x - stone.x);
             const dy = Math.abs(empty.y - stone.y);
             if (dx <= 1 && dy <= 1) {
-                const captures = getCaptures(game.board, stone, empty, 2);
+                const captures = getCaptures(game.board, stone, empty, 2, game.gameType);
                 if (captures.length > maxCaptures) {
                     maxCaptures = captures.length;
                     bestMove = { from: stone, to: empty, captures };
@@ -366,8 +369,9 @@ window.acceptInvite = async (inviteId, senderUid, senderName) => {
         creator: { id: senderUid, name: senderName, avatar: "" },
         opponent: { id: uid, name: myName, avatar: myAvatar },
         status: "playing",
+        gameType: "fanorontelo",
         turn: senderUid,
-        board: initBoard(),
+        board: initBoard("fanorontelo"),
         createdAt: serverTimestamp()
     });
     await updateDoc(doc(db, "invites", inviteId), { status: "accepted" });
@@ -422,13 +426,14 @@ function initLobby() {
             const roomId = d.id;
             if (r.status === "waiting") {
                 const isPrivate = r.type === "private"? "🔒" : "🌐";
-                const playerBadge = `<span class="badge-waiting">● 1/2 miandry</span>`;
+                const gameLabel = r.gameType === "fanorontsivy"? "5x5" : "3x3";
+                const playerBadge = `<span class="badge-waiting">● ${gameLabel} 1/2</span>`;
 
                 if (r.creator.id === getUserId()) {
                     if (myRoomsList) {
                         myRoomsList.innerHTML += `
                             <div class="room-card glass animate-pop">
-                                <span>🏠 ${roomId}</span>
+                                <span>🏠 ${roomId} (${gameLabel})</span>
                                 <div class="room-actions">
                                     <button class="btn-cancel" onclick="deleteRoom('${roomId}')">🗑️</button>
                                     <button onclick="viewRoom('${roomId}')">Hiditra</button>
@@ -439,7 +444,7 @@ function initLobby() {
                     if (publicList) {
                         publicList.innerHTML += `
                             <div class="room-card glass animate-pop">
-                                <span>${isPrivate} ${roomId}</span>
+                                <span>${isPrivate} ${roomId} (${gameLabel})</span>
                                 ${playerBadge}
                                 <button onclick="viewRoom('${roomId}')">Hijery</button>
                             </div>`;
@@ -495,10 +500,11 @@ function renderRoomLobby(room, roomId) {
     const isCreator = room.creator.id === getUserId();
     const isFull = room.opponent?.id;
     const isPlayingWithAI = room.opponent?.id === 'AI_BOT';
+    const gameLabel = room.gameType === "fanorontsivy"? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
 
     lobbyEl.innerHTML = `
         <div class="room-lobby-header">
-            <h2>🏠 ${roomId}</h2>
+            <h2>🏠 ${roomId} - ${gameLabel}</h2>
             <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
         </div>
         <div class="players-vs">
@@ -521,7 +527,6 @@ function renderRoomLobby(room, roomId) {
                     </div>
                 `}
             </div>
-        </div>
         <div class="lobby-actions">
             ${isCreator? `
                 ${isFull? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
@@ -534,9 +539,12 @@ function renderRoomLobby(room, roomId) {
 }
 
 window.startGame = async (roomId) => {
-    await updateDoc(doc(db, "rooms", roomId), {
+    const roomRef = doc(db, "rooms", roomId);
+    const snap = await getDoc(roomRef);
+    const gameType = snap.data().gameType || "fanorontelo";
+    await updateDoc(roomRef, {
         status: "playing",
-        board: initBoard(),
+        board: initBoard(gameType),
         turn: getUserId()
     });
 };
@@ -569,6 +577,8 @@ window.joinRoom = async (id) => {
 
 window.playWithAI = async (roomId) => {
     const roomRef = doc(db, "rooms", roomId);
+    const snap = await getDoc(roomRef);
+    const gameType = snap.data().gameType || "fanorontelo";
     await updateDoc(roomRef, {
         opponent: {
             id: 'AI_BOT',
@@ -576,7 +586,7 @@ window.playWithAI = async (roomId) => {
             avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI'
         },
         status: "playing",
-        board: initBoard(),
+        board: initBoard(gameType),
         turn: getUserId()
     });
     playSound('invite');
@@ -654,7 +664,7 @@ window.enterGame = async (id) => {
                 isAiThinking = false;
             }
 
-            const winner = checkWinnerFanorona(game.board, game.creator.id, game.opponent.id);
+            const winner = checkWinnerFanorona(game.board, game.creator.id, game.opponent.id, game.gameType);
             if (winner) {
                 clearInterval(turnTimerInterval);
                 await updateDoc(roomRef, { status: 'finished', winner: winner });
@@ -675,6 +685,9 @@ window.enterGame = async (id) => {
 function render(game) {
     const grid = document.getElementById("fanorona-grid");
     grid.innerHTML = "";
+    const gridSize = game.gameType === "fanorontsivy"? "grid-5x5" : "grid-3x3";
+    grid.className = `fanorona-grid ${gridSize}`;
+
     game.board.forEach(cell => {
         const div = document.createElement("div");
         div.className = "grid-spot" + (selectedCell?.id === cell.id? " active-spot" : "");
@@ -724,7 +737,7 @@ async function handleMove(cell, game) {
         const dy = Math.abs(cell.y - selectedCell.y);
 
         if (cell.value === 0 && dx <= 1 && dy <= 1) {
-            const captures = getCaptures(b, selectedCell, cell, myVal);
+            const captures = getCaptures(b, selectedCell, cell, myVal, game.gameType);
             b[selectedCell.id].value = 0;
             b[cell.id].value = myVal;
 
@@ -745,7 +758,7 @@ async function handleMove(cell, game) {
 }
 
 async function finalizeTurn(b, game) {
-    const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id);
+    const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id, game.gameType);
     const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
 
     await updateDoc(doc(db, "rooms", currentRoomId), {
@@ -822,70 +835,3 @@ document.getElementById("btn-quick-play").onclick = async () => {
             foundRoom = d.id;
         }
     });
-
-    if (foundRoom) {
-        viewRoom(foundRoom);
-    } else {
-        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
-        await setDoc(doc(db, "rooms", autoId), {
-            creator: {
-                id: uid,
-                name: document.getElementById("user-name").innerText,
-                avatar: document.getElementById("user-avatar").src
-            },
-            status: "waiting",
-            type: "public",
-            createdAt: serverTimestamp()
-        });
-        autoDeleteRoom(autoId);
-        viewRoom(autoId);
-    }
-};
-
-// ================= ROOM CREATION =================
-document.getElementById("btn-confirm-create").onclick = async () => {
-    const uid = getUserId();
-    if (!uid) return;
-
-    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
-    const type = document.getElementById("room-type").value;
-    const pass = document.getElementById("room-password").value;
-
-    await setDoc(doc(db, "rooms", name), {
-        creator: {
-            id: uid,
-            name: document.getElementById("user-name").innerText,
-            avatar: document.getElementById("user-avatar").src
-        },
-        status: "waiting",
-        type: type,
-        password: pass,
-        createdAt: serverTimestamp()
-    });
-
-    autoDeleteRoom(name);
-    document.getElementById("modal-create").classList.add("hidden");
-    viewRoom(name);
-};
-
-// ================= LOGOUT =================
-document.getElementById("btn-logout").onclick = async () => {
-    if (confirm("Hivoaka ve ianao?")) {
-        unsubscribeAll();
-        const uid = getUserId();
-        if (uid) {
-            await updateDoc(doc(db, "users", uid), { status: "offline" });
-        }
-        await auth.signOut();
-        localStorage.removeItem("nolimite_guest_uid");
-        localStorage.removeItem("nolimite_guest_name");
-        location.reload();
-    }
-};
-
-// ================= EXIT BUTTON LALAO =================
-document.querySelector("#game-screen.btn-exit").onclick = () => {
-    if (confirm("Hiala amin'ny lalao ve ianao?")) {
-        leaveGame();
-    }
-};
