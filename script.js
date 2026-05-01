@@ -22,28 +22,7 @@ import {
     getDoc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp();
 
-exports.deleteOldRooms = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
-    const db = admin.firestore();
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    
-    const snapshot = await db.collection('rooms')
-        .where('status', '==', 'waiting')
-        .where('createdAt', '<', fiveMinutesAgo)
-        .get();
-    
-    const batch = db.batch();
-    snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
-    console.log(`Deleted ${snapshot.size} old rooms`);
-    return null;
-});
 // ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
@@ -64,7 +43,6 @@ let myCurrentUid = null;
 let isAiThinking = false;
 let turnTimerInterval = null;
 
-// Unsubscribe functions
 let unsubscribeRoom = null;
 let unsubscribeRoomLobby = null;
 let unsubscribeChat = null;
@@ -95,25 +73,18 @@ function unsubscribeAll() {
     if (unsubscribeRoom) unsubscribeRoom();
     if (unsubscribeRoomLobby) unsubscribeRoomLobby();
     if (unsubscribeChat) unsubscribeChat();
+    if (unsubscribePlayers) unsubscribePlayers();
+    if (unsubscribeRooms) unsubscribeRooms();
     if (turnTimerInterval) clearInterval(turnTimerInterval);
 }
 
-// ================= PRESENCE SYSTEM =================
+// ================= PRESENCE =================
 function setupPresence(uid) {
     const userRef = doc(db, "users", uid);
-
-    // Online
-    updateDoc(userRef, {
-        status: "online",
-        lastSeen: serverTimestamp()
-    });
-
-    // Offline rehefa miala
+    updateDoc(userRef, { status: "online", lastSeen: serverTimestamp() });
     window.addEventListener("beforeunload", () => {
         updateDoc(userRef, { status: "offline" });
     });
-
-    // Heartbeat isaky ny 30s
     setInterval(() => {
         updateDoc(userRef, { lastSeen: serverTimestamp() });
     }, 30000);
@@ -128,29 +99,13 @@ function initBoard() {
     ];
 }
 
-// Jereo raha mi-align ny ligne iray
-function isAligned(x1, y1, x2, y2, x3, y3) {
-    // Horizontal
-    if (y1 === y2 && y2 === y3) return true;
-    // Vertical
-    if (x1 === x2 && x2 === x3) return true;
-    // Diagonal
-    if (Math.abs(x1 - x2) === Math.abs(y1 - y2) &&
-        Math.abs(x2 - x3) === Math.abs(y2 - y3) &&
-        (x2 - x1) * (y3 - y2) === (x3 - x2) * (y2 - y1)) return true;
-    return false;
-}
-
-// Fanorontelo capture: Paika (approach) sy Vela (withdrawal)
 function getCaptures(board, fromCell, toCell, myVal) {
     const opponentVal = myVal === 1? 2 : 1;
     const captured = [];
-
-    // Direction an'ny move
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
 
-    // 1. PAIKA - Capture by approach
+    // PAIKA - approach
     let nx = toCell.x + dx;
     let ny = toCell.y + dy;
     while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
@@ -161,7 +116,7 @@ function getCaptures(board, fromCell, toCell, myVal) {
         ny += dy;
     }
 
-    // 2. VELA - Capture by withdrawal
+    // VELA - withdrawal
     nx = fromCell.x - dx;
     ny = fromCell.y - dy;
     while (nx >= 0 && nx <= 2 && ny >= 0 && ny <= 2) {
@@ -172,17 +127,15 @@ function getCaptures(board, fromCell, toCell, myVal) {
         ny -= dy;
     }
 
-    return [...new Set(captured)]; // Esory duplicate
+    return [...new Set(captured)];
 }
 
 function checkWinnerFanorona(board, creatorId, opponentId) {
     const creatorStones = board.filter(c => c.value === 1).length;
     const opponentStones = board.filter(c => c.value === 2).length;
-
     if (creatorStones === 0) return opponentId;
     if (opponentStones === 0) return creatorId;
 
-    // Raha tsy afaka mihetsika intsony
     const canMove = (val) => {
         const stones = board.filter(c => c.value === val);
         for (let stone of stones) {
@@ -190,9 +143,7 @@ function checkWinnerFanorona(board, creatorId, opponentId) {
                 if (cell.value === 0) {
                     const dx = Math.abs(cell.x - stone.x);
                     const dy = Math.abs(cell.y - stone.y);
-                    if (dx <= 1 && dy <= 1 && isAligned(stone.x, stone.y, cell.x, cell.y, 1, 1)) {
-                        return true;
-                    }
+                    if (dx <= 1 && dy <= 1) return true;
                 }
             }
         }
@@ -201,11 +152,10 @@ function checkWinnerFanorona(board, creatorId, opponentId) {
 
     if (!canMove(1)) return opponentId;
     if (!canMove(2)) return creatorId;
-
     return null;
 }
 
-// ================= AI LOGIC =================
+// ================= AI =================
 async function aiMove(game) {
     if (game.turn!== 'AI_BOT' || game.status!== 'playing') return;
     await new Promise(resolve => setTimeout(resolve, 1200));
@@ -214,7 +164,6 @@ async function aiMove(game) {
     const emptyCells = game.board.filter(cell => cell.value === 0);
     if (aiStones.length === 0 || emptyCells.length === 0) return;
 
-    // AI tsotra: mitady capture aloha
     let bestMove = null;
     let maxCaptures = -1;
 
@@ -233,7 +182,6 @@ async function aiMove(game) {
     }
 
     if (!bestMove) {
-        // Raha tsy misy capture dia random
         const randomStone = aiStones[Math.floor(Math.random() * aiStones.length)];
         const validMoves = emptyCells.filter(cell => {
             const dx = Math.abs(cell.x - randomStone.x);
@@ -256,7 +204,6 @@ async function aiMove(game) {
             return cell;
         });
 
-        // Esory ny voasambotra
         if (bestMove.captures.length > 0) {
             playSound('capture');
             newBoard = newBoard.map(cell =>
@@ -272,7 +219,7 @@ async function aiMove(game) {
     }
 }
 
-// ================= LOGIN GUEST =================
+// ================= LOGIN =================
 document.getElementById("btn-guest").onclick = async () => {
     let guestUid = localStorage.getItem("nolimite_guest_uid");
     let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
@@ -285,7 +232,6 @@ document.getElementById("btn-guest").onclick = async () => {
     }
 
     myCurrentUid = guestUid;
-
     const guestData = {
         uid: guestUid,
         name: guestName,
@@ -295,12 +241,8 @@ document.getElementById("btn-guest").onclick = async () => {
         lastSeen: serverTimestamp()
     };
 
-    try {
-        await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
-        setupGuestUI(guestData);
-    } catch (e) {
-        console.error("Login Guest Error: ", e);
-    }
+    await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
+    setupGuestUI(guestData);
 };
 
 function setupGuestUI(user) {
@@ -314,7 +256,6 @@ function setupGuestUI(user) {
     initInvites(user.uid);
 }
 
-// ================= AUTH =================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         myCurrentUid = user.uid;
@@ -323,7 +264,6 @@ onAuthStateChanged(auth, async (user) => {
 
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
-
         let finalName = user.displayName;
         let finalAvatar = user.photoURL;
 
@@ -350,6 +290,17 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// ================= AUTO DELETE =================
+async function autoDeleteRoom(roomId) {
+    setTimeout(async () => {
+        const roomRef = doc(db, "rooms", roomId);
+        const snap = await getDoc(roomRef);
+        if (snap.exists() && snap.data().status === "waiting") {
+            await deleteDoc(roomRef);
+        }
+    }, 5 * 60 * 1000);
+}
+
 // ================= BUTTONS =================
 document.getElementById("btn-google").onclick = () => signInWithPopup(auth, provider);
 document.getElementById("btn-create-room").onclick = () => document.getElementById("modal-create").classList.remove("hidden");
@@ -359,12 +310,8 @@ document.getElementById("room-type").onchange = function () {
 
 window.deleteRoom = async (roomId) => {
     if (confirm("Tena hovafanao ve ity efitra ity?")) {
-        try {
-            await deleteDoc(doc(db, "rooms", roomId));
-            leaveRoomLobby();
-        } catch (e) {
-            console.error("Error deleting room:", e);
-        }
+        await deleteDoc(doc(db, "rooms", roomId));
+        leaveRoomLobby();
     }
 };
 
@@ -502,7 +449,6 @@ function initLobby() {
         });
     });
 
-    // Search
     document.getElementById("search-player").addEventListener("input", (e) => {
         const searchTerm = e.target.value.toLowerCase();
         document.querySelectorAll("#players-list-dynamic.player-item").forEach(player => {
@@ -636,7 +582,7 @@ window.playWithAI = async (roomId) => {
     playSound('invite');
 };
 
-// ================= PROFILE EDIT =================
+// ================= PROFILE =================
 window.openEditModal = () => {
     document.getElementById("edit-name").value = document.getElementById("user-name").innerText;
     document.getElementById("edit-avatar").value = document.getElementById("user-avatar").src;
@@ -658,17 +604,13 @@ document.getElementById("btn-save-profile").onclick = async () => {
         return;
     }
 
-    try {
-        await updateDoc(doc(db, "users", uid), {
-            name: newName,
-            avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + uid
-        });
-        document.getElementById("user-name").innerText = newName;
-        document.getElementById("user-avatar").src = newAvatar;
-        closeEditModal();
-    } catch (error) {
-        alert("Tsy nety ny fanovana.");
-    }
+    await updateDoc(doc(db, "users", uid), {
+        name: newName,
+        avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + uid
+    });
+    document.getElementById("user-name").innerText = newName;
+    document.getElementById("user-avatar").src = newAvatar;
+    closeEditModal();
 };
 
 // ================= GAME =================
@@ -689,7 +631,6 @@ window.enterGame = async (id) => {
         if (turnTimerInterval) clearInterval(turnTimerInterval);
 
         if (game.status === 'playing') {
-            // Timer
             const timerEl = document.getElementById("turn-timer");
             if (timerEl) {
                 let timeLeft = 30;
@@ -707,14 +648,12 @@ window.enterGame = async (id) => {
                 }, 1000);
             }
 
-            // AI Move
             if (game.turn === 'AI_BOT' &&!isAiThinking) {
                 isAiThinking = true;
                 await aiMove(game);
                 isAiThinking = false;
             }
 
-            // Check Winner
             const winner = checkWinnerFanorona(game.board, game.creator.id, game.opponent.id);
             if (winner) {
                 clearInterval(turnTimerInterval);
@@ -785,13 +724,10 @@ async function handleMove(cell, game) {
         const dy = Math.abs(cell.y - selectedCell.y);
 
         if (cell.value === 0 && dx <= 1 && dy <= 1) {
-            // FANORONTELO: Jereo ny capture
             const captures = getCaptures(b, selectedCell, cell, myVal);
-
             b[selectedCell.id].value = 0;
             b[cell.id].value = myVal;
 
-            // Esory ny voasambotra
             if (captures.length > 0) {
                 playSound('capture');
                 captures.forEach(id => {
@@ -882,7 +818,7 @@ document.getElementById("btn-quick-play").onclick = async () => {
 
     snap.forEach(d => {
         const r = d.data();
-           if (r.creator.id!== uid && r.type!== "private") {
+        if (r.creator.id!== uid && r.type!== "private") {
             foundRoom = d.id;
         }
     });
@@ -948,7 +884,7 @@ document.getElementById("btn-logout").onclick = async () => {
 };
 
 // ================= EXIT BUTTON LALAO =================
-document.querySelector("#game-screen .btn-exit").onclick = () => {
+document.querySelector("#game-screen.btn-exit").onclick = () => {
     if (confirm("Hiala amin'ny lalao ve ianao?")) {
         leaveGame();
     }
