@@ -835,3 +835,74 @@ document.getElementById("btn-quick-play").onclick = async () => {
             foundRoom = d.id;
         }
     });
+    if (foundRoom) {
+        viewRoom(foundRoom);
+    } else {
+        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
+        await setDoc(doc(db, "rooms", autoId), {
+            creator: {
+                id: uid,
+                name: document.getElementById("user-name").innerText,
+                avatar: document.getElementById("user-avatar").src
+            },
+            status: "waiting",
+            type: "public",
+            gameType: "fanorontelo", // Default 3x3
+            createdAt: serverTimestamp()
+        });
+        autoDeleteRoom(autoId);
+        viewRoom(autoId);
+    }
+};
+
+// ================= ROOM CREATION =================
+document.getElementById("btn-confirm-create").onclick = async () => {
+    const uid = getUserId();
+    if (!uid) return;
+
+    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
+    const type = document.getElementById("room-type").value;
+    const pass = document.getElementById("room-password").value;
+    const gameType = document.getElementById("game-type").value; // FANORONTELO na FANORONTSIVY
+
+    await setDoc(doc(db, "rooms", name), {
+        creator: {
+            id: uid,
+            name: document.getElementById("user-name").innerText,
+            avatar: document.getElementById("user-avatar").src
+        },
+        status: "waiting",
+        type: type,
+        gameType: gameType,
+        password: pass,
+        createdAt: serverTimestamp()
+    });
+
+    autoDeleteRoom(name);
+    document.getElementById("modal-create").classList.add("hidden");
+    viewRoom(name);
+};
+
+// ================= LOGOUT =================
+document.getElementById("btn-logout").onclick = async () => {
+    if (confirm("Hivoaka ve ianao?")) {
+        unsubscribeAll();
+        const uid = getUserId();
+        if (uid) {
+            await updateDoc(doc(db, "users", uid), { status: "offline" });
+        }
+        await auth.signOut();
+        localStorage.removeItem("nolimite_guest_uid");
+        localStorage.removeItem("nolimite_guest_name");
+        location.reload();
+    }
+};
+
+// ================= EXIT BUTTON LALAO - FIX SELECTOR =================
+document.addEventListener('click', (e) => {
+    if (e.target.matches('#game-screen .btn-exit')) {
+        if (confirm("Hiala amin'ny lalao ve ianao?")) {
+            leaveGame();
+        }
+    }
+});
