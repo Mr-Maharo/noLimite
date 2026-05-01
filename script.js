@@ -22,7 +22,12 @@ import {
     getDoc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+const supabase = createClient(
+  "https://YOUR_PROJECT.supabase.co",
+  "YOUR_ANON_KEY"
+);
 // ================= CONFIG =================
 const firebaseConfig = {
     apiKey: "AIzaSyA7ZtoI2iBifQqfiDJ-K1xrUVpxAgK77Jo",
@@ -671,17 +676,32 @@ window.enterGame = async (id) => {
             }
         }
 
-        if (game.status === 'finished' && game.winner) {
-            const winnerName = game.winner === game.creator.id? game.creator.name : game.opponent.name;
-            setTimeout(() => {
-                playSound('win');
-                alert(`🎉 ${winnerName} no nandresy!`);
-                leaveGame();
-            }, 500);
-        }
-    });
-};
+       if (game.status === 'finished' && game.winner && !gameEnded) {
+    gameEnded = true;
 
+    const winnerId = game.winner;
+    const loserId = winnerId === game.creator.id
+        ? game.opponent.id
+        : game.creator.id;
+
+    const winnerName = winnerId === game.creator.id
+        ? game.creator.name
+        : game.opponent.name;
+
+    const loserName = loserId === game.creator.id
+        ? game.creator.name
+        : game.opponent.name;
+
+    // 🔥 SAVE SCORE (Supabase na Firebase)
+    updateLeaderboard(winnerId, winnerName, loserId, loserName);
+
+    setTimeout(() => {
+        playSound('win');
+        alert(`🎉 ${winnerName} no nandresy!`);
+        leaveGame();
+    }, 500);
+}
+        
 function render(game) {
     const grid = document.getElementById("fanorona-grid");
     grid.innerHTML = "";
@@ -906,3 +926,65 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
+
+    // WINNER
+    const { data: winData } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .eq("player_id", winnerId)
+        .single();
+
+    if (winData) {
+        await supabase
+            .from("leaderboard")
+            .update({ wins: winData.wins + 1 })
+            .eq("player_id", winnerId);
+    } else {
+        await supabase.from("leaderboard").insert([{
+            player_id: winnerId,
+            player_name: winnerName,
+            wins: 1,
+            losses: 0
+        }]);
+    }
+async function loadLeaderboard() {
+    const { data } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .order("wins", { ascending: false })
+        .limit(10);
+
+    const container = document.getElementById("leaderboard");
+    container.innerHTML = "<h3>🏆 Leaderboard</h3>";
+
+    data.forEach((player, index) => {
+        container.innerHTML += `
+            <div>
+                ${index + 1}. ${player.player_name} - 
+                🟢 ${player.wins} | 🔴 ${player.losses}
+            </div>
+        `;
+    });
+}
+    // LOSER
+    const { data: loseData } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .eq("player_id", loserId)
+        .single();
+
+    if (loseData) {
+        await supabase
+            .from("leaderboard")
+            .update({ losses: loseData.losses + 1 })
+            .eq("player_id", loserId);
+    } else {
+        await supabase.from("leaderboard").insert([{
+            player_id: loserId,
+            player_name: loserName,
+            wins: 0,
+            losses: 1
+        }]);
+    }
+}
