@@ -28,6 +28,7 @@ const supabase = createClient(
   "https://YOUR_PROJECT.supabase.co",
   "YOUR_ANON_KEY"
 );
+
 // ================= CONFIG =================
 const firebaseConfig = {
   apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
@@ -111,8 +112,8 @@ function initBoard(gameType) {
 
 // ================= FANORONA LOGIC =================
 function getCaptures(board, fromCell, toCell, myVal, gameType) {
-    const maxSize = gameType === "fanorontsivy"? 4 : 2;
-    const opponentVal = myVal === 1? 2 : 1;
+    const maxSize = gameType === "fanorontsivy" ? 4 : 2;
+    const opponentVal = myVal === 1 ? 2 : 1;
     const captured = [];
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
@@ -122,7 +123,7 @@ function getCaptures(board, fromCell, toCell, myVal, gameType) {
     let ny = toCell.y + dy;
     while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value!== opponentVal) break;
+        if (!nextCell || nextCell.value !== opponentVal) break;
         captured.push(nextCell.id);
         nx += dx;
         ny += dy;
@@ -133,7 +134,7 @@ function getCaptures(board, fromCell, toCell, myVal, gameType) {
     ny = fromCell.y - dy;
     while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value!== opponentVal) break;
+        if (!nextCell || nextCell.value !== opponentVal) break;
         captured.push(nextCell.id);
         nx -= dx;
         ny -= dy;
@@ -169,7 +170,7 @@ function checkWinnerFanorona(board, creatorId, opponentId, gameType) {
 
 // ================= AI =================
 async function aiMove(game) {
-    if (game.turn!== 'AI_BOT' || game.status!== 'playing') return;
+    if (game.turn !== 'AI_BOT' || game.status !== 'playing') return;
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     const aiStones = game.board.filter(cell => cell.value === 2);
@@ -211,15 +212,15 @@ async function aiMove(game) {
 
     if (bestMove) {
         let newBoard = game.board.map(cell => {
-            if (cell.id === bestMove.from.id) return {...cell, value: 0 };
-            if (cell.id === bestMove.to.id) return {...cell, value: 2 };
+            if (cell.id === bestMove.from.id) return { ...cell, value: 0 };
+            if (cell.id === bestMove.to.id) return { ...cell, value: 2 };
             return cell;
         });
 
         if (bestMove.captures.length > 0) {
             playSound('capture');
             newBoard = newBoard.map(cell =>
-                bestMove.captures.includes(cell.id)? {...cell, value: 0 } : cell
+                bestMove.captures.includes(cell.id) ? { ...cell, value: 0 } : cell
             );
         }
 
@@ -317,7 +318,7 @@ async function autoDeleteRoom(roomId) {
 document.getElementById("btn-google").onclick = () => signInWithPopup(auth, provider);
 document.getElementById("btn-create-room").onclick = () => document.getElementById("modal-create").classList.remove("hidden");
 document.getElementById("room-type").onchange = function () {
-    document.getElementById("room-password").style.display = this.value === "private"? "block" : "none";
+    document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
 };
 
 window.deleteRoom = async (roomId) => {
@@ -404,7 +405,7 @@ async function initPlayerList() {
 
         snapshot.forEach((doc) => {
             const userData = doc.data();
-            if (userData.uid!== getUserId()) {
+            if (userData.uid !== getUserId()) {
                 const html = `
                     <div class="player-item">
                         <img src="${userData.avatar}" class="player-avatar-mini">
@@ -434,8 +435,8 @@ function initLobby() {
             const r = d.data();
             const roomId = d.id;
             if (r.status === "waiting") {
-                const isPrivate = r.type === "private"? "🔒" : "🌐";
-                const gameLabel = r.gameType === "fanorontsivy"? "5x5" : "3x3";
+                const isPrivate = r.type === "private" ? "🔒" : "🌐";
+                const gameLabel = r.gameType === "fanorontsivy" ? "5x5" : "3x3";
                 const playerBadge = `<span class="badge-waiting">● ${gameLabel} 1/2</span>`;
 
                 if (r.creator.id === getUserId()) {
@@ -449,7 +450,7 @@ function initLobby() {
                                 </div>
                             </div>`;
                     }
-                } else if (r.type!== "private") {
+                } else if (r.type !== "private") {
                     if (publicList) {
                         publicList.innerHTML += `
                             <div class="room-card glass animate-pop">
@@ -465,17 +466,17 @@ function initLobby() {
 
     document.getElementById("search-player").addEventListener("input", (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll("#players-list-dynamic.player-item").forEach(player => {
+        document.querySelectorAll("#players-list-dynamic .player-item").forEach(player => {
             const name = player.querySelector(".player-name-mini").innerText.toLowerCase();
-            player.style.display = name.includes(searchTerm)? "flex" : "none";
+            player.style.display = name.includes(searchTerm) ? "flex" : "none";
         });
     });
 
     document.getElementById("search-room").addEventListener("input", (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll("#rooms-list-dynamic.room-card").forEach(room => {
+        document.querySelectorAll("#rooms-list-dynamic .room-card").forEach(room => {
             const roomName = room.querySelector("span").innerText.toLowerCase();
-            room.style.display = roomName.includes(searchTerm)? "flex" : "none";
+            room.style.display = roomName.includes(searchTerm) ? "flex" : "none";
         });
     });
 }
@@ -487,8 +488,8 @@ window.viewRoom = async (id) => {
     if (!roomSnap.exists()) return alert("Tsy misy io efitra io");
 
     const r = roomSnap.data();
-    if (r.type === "private" && r.creator.id!== getUserId()) {
-        if (prompt("Teny miafina:")!== r.password) return alert("Diso!");
+    if (r.type === "private" && r.creator.id !== getUserId()) {
+        if (prompt("Teny miafina:") !== r.password) return alert("Diso!");
     }
 
     currentRoomId = id;
@@ -509,7 +510,7 @@ function renderRoomLobby(room, roomId) {
     const isCreator = room.creator.id === getUserId();
     const isFull = room.opponent?.id;
     const isPlayingWithAI = room.opponent?.id === 'AI_BOT';
-    const gameLabel = room.gameType === "fanorontsivy"? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
+    const gameLabel = room.gameType === "fanorontsivy" ? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
 
     lobbyEl.innerHTML = `
         <div class="room-lobby-header">
@@ -517,31 +518,32 @@ function renderRoomLobby(room, roomId) {
             <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
         </div>
         <div class="players-vs">
-            <div class="player-slot ${isCreator? 'you' : ''}">
+            <div class="player-slot ${isCreator ? 'you' : ''}">
                 <img src="${room.creator.avatar}" class="player-img-large">
                 <h3>${room.creator.name}</h3>
                 <span class="badge-host">Mpamorona</span>
             </div>
             <div class="vs-text">VS</div>
-            <div class="player-slot ${!isCreator && isFull? 'you' : ''}">
-                ${isFull? `
+            <div class="player-slot ${!isCreator && isFull ? 'you' : ''}">
+                ${isFull ? `
                     <img src="${room.opponent.avatar}" class="player-img-large">
                     <h3>${room.opponent.name}</h3>
-                    ${isPlayingWithAI? '<span class="badge-ai">🤖 AI</span>' : ''}
+                    ${isPlayingWithAI ? '<span class="badge-ai">🤖 AI</span>' : ''}
                 ` : `
                     <div class="waiting-player">
                         <div class="spinner"></div>
                         <p>Miandry mpifanandrina...</p>
-                        ${isCreator? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
+                        ${isCreator ? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
                     </div>
                 `}
             </div>
+        </div>
         <div class="lobby-actions">
-            ${isCreator? `
-                ${isFull? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
+            ${isCreator ? `
+                ${isFull ? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
                 <button onclick="deleteRoom('${roomId}')" class="btn-cancel">🗑️ Fafao ny efitra</button>
             ` : `
-                ${!isFull? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
+                ${!isFull ? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
             `}
         </div>
     `;
@@ -636,6 +638,7 @@ document.getElementById("btn-save-profile").onclick = async () => {
 window.enterGame = async (id) => {
     unsubscribeAll();
     currentRoomId = id;
+    let gameEnded = false;
     document.getElementById("lobby-screen").classList.add("hidden");
     document.getElementById("room-lobby-screen").classList.add("hidden");
     document.getElementById("game-screen").classList.remove("hidden");
@@ -660,14 +663,14 @@ window.enterGame = async (id) => {
                     if (timeLeft <= 0) {
                         clearInterval(turnTimerInterval);
                         if (game.turn === getUserId()) {
-                            const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
+                            const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
                             await updateDoc(roomRef, { turn: nextTurn });
                         }
                     }
                 }, 1000);
             }
 
-            if (game.turn === 'AI_BOT' &&!isAiThinking) {
+            if (game.turn === 'AI_BOT' && !isAiThinking) {
                 isAiThinking = true;
                 await aiMove(game);
                 isAiThinking = false;
@@ -680,49 +683,49 @@ window.enterGame = async (id) => {
             }
         }
 
-       if (game.status === 'finished' && game.winner && !gameEnded) {
-    gameEnded = true;
+        if (game.status === 'finished' && game.winner && !gameEnded) {
+            gameEnded = true;
 
-    const winnerId = game.winner;
-    const loserId = winnerId === game.creator.id
-        ? game.opponent.id
-        : game.creator.id;
+            const winnerId = game.winner;
+            const loserId = winnerId === game.creator.id
+                ? game.opponent.id
+                : game.creator.id;
 
-    const winnerName = winnerId === game.creator.id
-        ? game.creator.name
-        : game.opponent.name;
+            const winnerName = winnerId === game.creator.id
+                ? game.creator.name
+                : game.opponent.name;
 
-    const loserName = loserId === game.creator.id
-        ? game.creator.name
-        : game.opponent.name;
+            const loserName = loserId === game.creator.id
+                ? game.creator.name
+                : game.opponent.name;
 
-    // 🔥 SAVE SCORE (Supabase na Firebase)
-    updateLeaderboard(winnerId, winnerName, loserId, loserName);
+            await updateLeaderboard(winnerId, winnerName, loserId, loserName);
 
-    setTimeout(() => {
-        playSound('win');
-        alert(`🎉 ${winnerName} no nandresy!`);
-        leaveGame();
-    }, 500);
-}
-        
+            setTimeout(() => {
+                playSound('win');
+                alert(`🎉 ${winnerName} no nandresy!`);
+                leaveGame();
+            }, 500);
+        }
+    });
+};
+
 function render(game) {
     const grid = document.getElementById("fanorona-grid");
     grid.innerHTML = "";
-    const gridSize = game.gameType === "fanorontsivy"? "grid-5x5" : "grid-3x3";
+    const gridSize = game.gameType === "fanorontsivy" ? "grid-5x5" : "grid-3x3";
     grid.className = `fanorona-grid ${gridSize}`;
 
     game.board.forEach(cell => {
         const div = document.createElement("div");
-        div.className = "grid-spot" + (selectedCell?.id === cell.id? " active-spot" : "");
+        div.className = "grid-spot" + (selectedCell?.id === cell.id ? " active-spot" : "");
 
         if (cell.value) {
             const stone = document.createElement("div");
-            stone.className = `stone ${cell.value === 1? 'black-stone' : 'white-stone'} animate-pop`;
+            stone.className = `stone ${cell.value === 1 ? 'black-stone' : 'white-stone'} animate-pop`;
             div.appendChild(stone);
         }
 
-        div.onclick = null;
         div.addEventListener('click', () => {
             playSound('click');
             handleMove(cell, game);
@@ -739,16 +742,16 @@ function render(game) {
     const turnEl = document.getElementById("turn-indicator");
     if (turnEl) {
         const isMyTurn = game.turn === getUserId();
-        turnEl.innerText = isMyTurn? "Anjaranao!" : "Anjaran'ny mpifanandrina";
-        turnEl.className = isMyTurn? "my-turn" : "opp-turn";
+        turnEl.innerText = isMyTurn ? "Anjaranao!" : "Anjaran'ny mpifanandrina";
+        turnEl.className = isMyTurn ? "my-turn" : "opp-turn";
     }
 }
 
 async function handleMove(cell, game) {
     const uid = getUserId();
-    if (game.turn!== uid) return;
+    if (game.turn !== uid) return;
 
-    const myVal = game.creator.id === uid? 1 : 2;
+    const myVal = game.creator.id === uid ? 1 : 2;
     let b = [...game.board];
 
     if (!selectedCell) {
@@ -775,7 +778,7 @@ async function handleMove(cell, game) {
             selectedCell = null;
             await finalizeTurn(b, game);
         } else {
-            selectedCell = (cell.value === myVal)? cell : null;
+            selectedCell = (cell.value === myVal) ? cell : null;
             render(game);
         }
     }
@@ -783,11 +786,11 @@ async function handleMove(cell, game) {
 
 async function finalizeTurn(b, game) {
     const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id, game.gameType);
-    const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
+    const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
 
     await updateDoc(doc(db, "rooms", currentRoomId), {
         board: b,
-        turn: winner? "end" : nextTurn,
+        turn: winner ? "end" : nextTurn,
         winner: winner
     });
 }
@@ -820,7 +823,7 @@ function initChat(roomId) {
             const msg = d.data();
             const isMe = msg.senderId === getUserId();
             const div = document.createElement("div");
-            div.className = isMe? "chat-me" : "chat-opp";
+            div.className = isMe ? "chat-me" : "chat-opp";
             div.innerText = `${msg.senderName}: ${msg.text}`;
             chatMessages.appendChild(div);
         });
@@ -854,141 +857,4 @@ document.getElementById("btn-quick-play").onclick = async () => {
     let foundRoom = null;
 
     snap.forEach(d => {
-        const r = d.data();
-        if (r.creator.id!== uid && r.type!== "private") {
-            foundRoom = d.id;
-        }
-    });
-    if (foundRoom) {
-        viewRoom(foundRoom);
-    } else {
-        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
-        await setDoc(doc(db, "rooms", autoId), {
-            creator: {
-                id: uid,
-                name: document.getElementById("user-name").innerText,
-                avatar: document.getElementById("user-avatar").src
-            },
-            status: "waiting",
-            type: "public",
-            gameType: "fanorontelo", // Default 3x3
-            createdAt: serverTimestamp()
-        });
-        autoDeleteRoom(autoId);
-        viewRoom(autoId);
-    }
-};
-
-// ================= ROOM CREATION =================
-document.getElementById("btn-confirm-create").onclick = async () => {
-    const uid = getUserId();
-    if (!uid) return;
-
-    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
-    const type = document.getElementById("room-type").value;
-    const pass = document.getElementById("room-password").value;
-    const gameType = document.getElementById("game-type").value; // FANORONTELO na FANORONTSIVY
-
-    await setDoc(doc(db, "rooms", name), {
-        creator: {
-            id: uid,
-            name: document.getElementById("user-name").innerText,
-            avatar: document.getElementById("user-avatar").src
-        },
-        status: "waiting",
-        type: type,
-        gameType: gameType,
-        password: pass,
-        createdAt: serverTimestamp()
-    });
-
-    autoDeleteRoom(name);
-    document.getElementById("modal-create").classList.add("hidden");
-    viewRoom(name);
-};
-
-// ================= LOGOUT =================
-document.getElementById("btn-logout").onclick = async () => {
-    if (confirm("Hivoaka ve ianao?")) {
-        unsubscribeAll();
-        const uid = getUserId();
-        if (uid) {
-            await updateDoc(doc(db, "users", uid), { status: "offline" });
-        }
-        await auth.signOut();
-        localStorage.removeItem("nolimite_guest_uid");
-        localStorage.removeItem("nolimite_guest_name");
-        location.reload();
-    }
-};
-
-// ================= EXIT BUTTON LALAO - FIX SELECTOR =================
-document.addEventListener('click', (e) => {
-    if (e.target.matches('#game-screen .btn-exit')) {
-        if (confirm("Hiala amin'ny lalao ve ianao?")) {
-            leaveGame();
-        }
-    }
-});
-async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
-
-    // WINNER
-    const { data: winData } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("player_id", winnerId)
-        .single();
-
-    if (winData) {
-        await supabase
-            .from("leaderboard")
-            .update({ wins: winData.wins + 1 })
-            .eq("player_id", winnerId);
-    } else {
-        await supabase.from("leaderboard").insert([{
-            player_id: winnerId,
-            player_name: winnerName,
-            wins: 1,
-            losses: 0
-        }]);
-    }
-async function loadLeaderboard() {
-    const { data } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .order("wins", { ascending: false })
-        .limit(10);
-
-    const container = document.getElementById("leaderboard");
-    container.innerHTML = "<h3>🏆 Leaderboard</h3>";
-
-    data.forEach((player, index) => {
-        container.innerHTML += `
-            <div>
-                ${index + 1}. ${player.player_name} - 
-                🟢 ${player.wins} | 🔴 ${player.losses}
-            </div>
-        `;
-    });
-}
-    // LOSER
-    const { data: loseData } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("player_id", loserId)
-        .single();
-
-    if (loseData) {
-        await supabase
-            .from("leaderboard")
-            .update({ losses: loseData.losses + 1 })
-            .eq("player_id", loserId);
-    } else {
-        await supabase.from("leaderboard").insert([{
-            player_id: loserId,
-            player_name: loserName,
-            wins: 0,
-            losses: 1
-        }]);
-    }
-}
+        const r = d.data
