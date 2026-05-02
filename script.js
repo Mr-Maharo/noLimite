@@ -23,12 +23,10 @@ import {
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
 const supabase = createClient(
-  "https://YOUR_PROJECT.supabase.co",
-  "YOUR_ANON_KEY"
+  "https://ajkqodiuhqzibxqjoxpl.supabase.co",
+  "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
 );
-
 // ================= CONFIG =================
 const firebaseConfig = {
   apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
