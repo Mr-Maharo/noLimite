@@ -23,10 +23,12 @@ import {
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
 const supabase = createClient(
   "https://ajkqodiuhqzibxqjoxpl.supabase.co",
   "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
 );
+
 // ================= CONFIG =================
 const firebaseConfig = {
   apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
@@ -57,11 +59,8 @@ let unsubscribeChat = null;
 let unsubscribePlayers = null;
 let unsubscribeRooms = null;
 
-// ================= SOUND - ATAO MUTE FA 403 =================
-function playSound(type) {
-    // Esorina aloha fa 403 ny CDN
-    // Azonao soloina base64 na file-nao manokana
-}
+// ================= SOUND =================
+function playSound(type) {}
 
 // ================= HELPER =================
 function getUserId() {
@@ -110,29 +109,27 @@ function initBoard(gameType) {
 
 // ================= FANORONA LOGIC =================
 function getCaptures(board, fromCell, toCell, myVal, gameType) {
-    const maxSize = gameType === "fanorontsivy" ? 4 : 2;
-    const opponentVal = myVal === 1 ? 2 : 1;
+    const maxSize = gameType === "fanorontsivy"? 4 : 2;
+    const opponentVal = myVal === 1? 2 : 1;
     const captured = [];
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
 
-    // PAIKA
     let nx = toCell.x + dx;
     let ny = toCell.y + dy;
     while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value !== opponentVal) break;
+        if (!nextCell || nextCell.value!== opponentVal) break;
         captured.push(nextCell.id);
         nx += dx;
         ny += dy;
     }
 
-    // VELA
     nx = fromCell.x - dx;
     ny = fromCell.y - dy;
     while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
         const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value !== opponentVal) break;
+        if (!nextCell || nextCell.value!== opponentVal) break;
         captured.push(nextCell.id);
         nx -= dx;
         ny -= dy;
@@ -168,7 +165,7 @@ function checkWinnerFanorona(board, creatorId, opponentId, gameType) {
 
 // ================= AI =================
 async function aiMove(game) {
-    if (game.turn !== 'AI_BOT' || game.status !== 'playing') return;
+    if (game.turn!== 'AI_BOT' || game.status!== 'playing') return;
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     const aiStones = game.board.filter(cell => cell.value === 2);
@@ -210,15 +207,15 @@ async function aiMove(game) {
 
     if (bestMove) {
         let newBoard = game.board.map(cell => {
-            if (cell.id === bestMove.from.id) return { ...cell, value: 0 };
-            if (cell.id === bestMove.to.id) return { ...cell, value: 2 };
+            if (cell.id === bestMove.from.id) return {...cell, value: 0 };
+            if (cell.id === bestMove.to.id) return {...cell, value: 2 };
             return cell;
         });
 
         if (bestMove.captures.length > 0) {
             playSound('capture');
             newBoard = newBoard.map(cell =>
-                bestMove.captures.includes(cell.id) ? { ...cell, value: 0 } : cell
+                bestMove.captures.includes(cell.id)? {...cell, value: 0 } : cell
             );
         }
 
@@ -230,32 +227,7 @@ async function aiMove(game) {
     }
 }
 
-// ================= LOGIN =================
-document.getElementById("btn-guest").onclick = async () => {
-    let guestUid = localStorage.getItem("nolimite_guest_uid");
-    let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
-    let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
-
-    if (!guestUid) {
-        guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-        localStorage.setItem("nolimite_guest_uid", guestUid);
-        localStorage.setItem("nolimite_guest_name", guestName);
-    }
-
-    myCurrentUid = guestUid;
-    const guestData = {
-        uid: guestUid,
-        name: guestName,
-        avatar: guestAvatar,
-        status: "online",
-        isGuest: true,
-        lastSeen: serverTimestamp()
-    };
-
-    await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
-    setupGuestUI(guestData);
-};
-
+// ================= AUTH STATE =================
 function setupGuestUI(user) {
     document.getElementById("login-screen").classList.add("hidden");
     document.getElementById("lobby-screen").classList.remove("hidden");
@@ -312,13 +284,6 @@ async function autoDeleteRoom(roomId) {
     }, 5 * 60 * 1000);
 }
 
-// ================= BUTTONS =================
-document.getElementById("btn-google").onclick = () => signInWithPopup(auth, provider);
-document.getElementById("btn-create-room").onclick = () => document.getElementById("modal-create").classList.remove("hidden");
-document.getElementById("room-type").onchange = function () {
-    document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
-};
-
 window.deleteRoom = async (roomId) => {
     if (confirm("Tena hovafanao ve ity efitra ity?")) {
         await deleteDoc(doc(db, "rooms", roomId));
@@ -352,13 +317,14 @@ function initInvites(uid) {
 function showInviteUI(inviteId, invite) {
     if (document.getElementById("invite-" + inviteId)) return;
     const container = document.getElementById("invite-notifications");
+    if (!container) return;
     const box = document.createElement("div");
     box.id = "invite-" + inviteId;
     box.className = "invite-popup glass animate-pop";
     box.innerHTML = `
         <p>🎮 <b>${invite.fromName}</b> manasa anao!</p>
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-save" onclick="acceptInvite('${inviteId}', '${invite.from}', '${invite.fromName}')">Ekena</button>
+            <button class="btn-save" onclick="acceptInvite('${inviteId}', '${invite.fromName}')">Ekena</button>
             <button class="btn-cancel" onclick="rejectInvite('${inviteId}')">Tsia</button>
         </div>
     `;
@@ -403,7 +369,7 @@ async function initPlayerList() {
 
         snapshot.forEach((doc) => {
             const userData = doc.data();
-            if (userData.uid !== getUserId()) {
+            if (userData.uid!== getUserId()) {
                 const html = `
                     <div class="player-item">
                         <img src="${userData.avatar}" class="player-avatar-mini">
@@ -433,8 +399,8 @@ function initLobby() {
             const r = d.data();
             const roomId = d.id;
             if (r.status === "waiting") {
-                const isPrivate = r.type === "private" ? "🔒" : "🌐";
-                const gameLabel = r.gameType === "fanorontsivy" ? "5x5" : "3x3";
+                const isPrivate = r.type === "private"? "🔒" : "🌐";
+                const gameLabel = r.gameType === "fanorontsivy"? "5x5" : "3x3";
                 const playerBadge = `<span class="badge-waiting">● ${gameLabel} 1/2</span>`;
 
                 if (r.creator.id === getUserId()) {
@@ -448,7 +414,7 @@ function initLobby() {
                                 </div>
                             </div>`;
                     }
-                } else if (r.type !== "private") {
+                } else if (r.type!== "private") {
                     if (publicList) {
                         publicList.innerHTML += `
                             <div class="room-card glass animate-pop">
@@ -462,21 +428,27 @@ function initLobby() {
         });
     });
 
-    document.getElementById("search-player").addEventListener("input", (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll("#players-list-dynamic .player-item").forEach(player => {
-            const name = player.querySelector(".player-name-mini").innerText.toLowerCase();
-            player.style.display = name.includes(searchTerm) ? "flex" : "none";
+    const searchPlayer = document.getElementById("search-player");
+    if (searchPlayer) {
+        searchPlayer.addEventListener("input", (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll("#players-list-dynamic.player-item").forEach(player => {
+                const name = player.querySelector(".player-name-mini").innerText.toLowerCase();
+                player.style.display = name.includes(searchTerm)? "flex" : "none";
+            });
         });
-    });
+    }
 
-    document.getElementById("search-room").addEventListener("input", (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll("#rooms-list-dynamic .room-card").forEach(room => {
-            const roomName = room.querySelector("span").innerText.toLowerCase();
-            room.style.display = roomName.includes(searchTerm) ? "flex" : "none";
+    const searchRoom = document.getElementById("search-room");
+    if (searchRoom) {
+        searchRoom.addEventListener("input", (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll("#rooms-list-dynamic.room-card").forEach(room => {
+                const roomName = room.querySelector("span").innerText.toLowerCase();
+                room.style.display = roomName.includes(searchTerm)? "flex" : "none";
+            });
         });
-    });
+    }
 }
 
 // ================= ROOM LOBBY =================
@@ -486,8 +458,8 @@ window.viewRoom = async (id) => {
     if (!roomSnap.exists()) return alert("Tsy misy io efitra io");
 
     const r = roomSnap.data();
-    if (r.type === "private" && r.creator.id !== getUserId()) {
-        if (prompt("Teny miafina:") !== r.password) return alert("Diso!");
+    if (r.type === "private" && r.creator.id!== getUserId()) {
+        if (prompt("Teny miafina:")!== r.password) return alert("Diso!");
     }
 
     currentRoomId = id;
@@ -508,7 +480,7 @@ function renderRoomLobby(room, roomId) {
     const isCreator = room.creator.id === getUserId();
     const isFull = room.opponent?.id;
     const isPlayingWithAI = room.opponent?.id === 'AI_BOT';
-    const gameLabel = room.gameType === "fanorontsivy" ? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
+    const gameLabel = room.gameType === "fanorontsivy"? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
 
     lobbyEl.innerHTML = `
         <div class="room-lobby-header">
@@ -516,32 +488,32 @@ function renderRoomLobby(room, roomId) {
             <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
         </div>
         <div class="players-vs">
-            <div class="player-slot ${isCreator ? 'you' : ''}">
+            <div class="player-slot ${isCreator? 'you' : ''}">
                 <img src="${room.creator.avatar}" class="player-img-large">
                 <h3>${room.creator.name}</h3>
                 <span class="badge-host">Mpamorona</span>
             </div>
             <div class="vs-text">VS</div>
-            <div class="player-slot ${!isCreator && isFull ? 'you' : ''}">
-                ${isFull ? `
+            <div class="player-slot ${!isCreator && isFull? 'you' : ''}">
+                ${isFull? `
                     <img src="${room.opponent.avatar}" class="player-img-large">
                     <h3>${room.opponent.name}</h3>
-                    ${isPlayingWithAI ? '<span class="badge-ai">🤖 AI</span>' : ''}
+                    ${isPlayingWithAI? '<span class="badge-ai">🤖 AI</span>' : ''}
                 ` : `
                     <div class="waiting-player">
                         <div class="spinner"></div>
                         <p>Miandry mpifanandrina...</p>
-                        ${isCreator ? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
+                        ${isCreator? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
                     </div>
                 `}
             </div>
         </div>
         <div class="lobby-actions">
-            ${isCreator ? `
-                ${isFull ? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
+            ${isCreator? `
+                ${isFull? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
                 <button onclick="deleteRoom('${roomId}')" class="btn-cancel">🗑️ Fafao ny efitra</button>
             ` : `
-                ${!isFull ? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
+                ${!isFull? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
             `}
         </div>
     `;
@@ -612,26 +584,6 @@ window.closeEditModal = () => {
     document.getElementById("modal-edit-profile").classList.add("hidden");
 };
 
-document.getElementById("btn-save-profile").onclick = async () => {
-    const uid = getUserId();
-    if (!uid) return;
-    let newName = document.getElementById("edit-name").value.trim();
-    const newAvatar = document.getElementById("edit-avatar").value.trim();
-
-    if (newName.length === 0 || newName.length > 8) {
-        alert("Anarana 1 hatramin'ny 8 litera ihany azafady!");
-        return;
-    }
-
-    await updateDoc(doc(db, "users", uid), {
-        name: newName,
-        avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + uid
-    });
-    document.getElementById("user-name").innerText = newName;
-    document.getElementById("user-avatar").src = newAvatar;
-    closeEditModal();
-};
-
 // ================= GAME =================
 window.enterGame = async (id) => {
     unsubscribeAll();
@@ -661,14 +613,14 @@ window.enterGame = async (id) => {
                     if (timeLeft <= 0) {
                         clearInterval(turnTimerInterval);
                         if (game.turn === getUserId()) {
-                            const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
+                            const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
                             await updateDoc(roomRef, { turn: nextTurn });
                         }
                     }
                 }, 1000);
             }
 
-            if (game.turn === 'AI_BOT' && !isAiThinking) {
+            if (game.turn === 'AI_BOT' &&!isAiThinking) {
                 isAiThinking = true;
                 await aiMove(game);
                 isAiThinking = false;
@@ -681,20 +633,20 @@ window.enterGame = async (id) => {
             }
         }
 
-        if (game.status === 'finished' && game.winner && !gameEnded) {
+        if (game.status === 'finished' && game.winner &&!gameEnded) {
             gameEnded = true;
 
             const winnerId = game.winner;
             const loserId = winnerId === game.creator.id
-                ? game.opponent.id
+               ? game.opponent.id
                 : game.creator.id;
 
             const winnerName = winnerId === game.creator.id
-                ? game.creator.name
+               ? game.creator.name
                 : game.opponent.name;
 
             const loserName = loserId === game.creator.id
-                ? game.creator.name
+               ? game.creator.name
                 : game.opponent.name;
 
             await updateLeaderboard(winnerId, winnerName, loserId, loserName);
@@ -711,16 +663,16 @@ window.enterGame = async (id) => {
 function render(game) {
     const grid = document.getElementById("fanorona-grid");
     grid.innerHTML = "";
-    const gridSize = game.gameType === "fanorontsivy" ? "grid-5x5" : "grid-3x3";
+    const gridSize = game.gameType === "fanorontsivy"? "grid-5x5" : "grid-3x3";
     grid.className = `fanorona-grid ${gridSize}`;
 
     game.board.forEach(cell => {
         const div = document.createElement("div");
-        div.className = "grid-spot" + (selectedCell?.id === cell.id ? " active-spot" : "");
+        div.className = "grid-spot" + (selectedCell?.id === cell.id? " active-spot" : "");
 
         if (cell.value) {
             const stone = document.createElement("div");
-            stone.className = `stone ${cell.value === 1 ? 'black-stone' : 'white-stone'} animate-pop`;
+            stone.className = `stone ${cell.value === 1? 'black-stone' : 'white-stone'} animate-pop`;
             div.appendChild(stone);
         }
 
@@ -740,16 +692,16 @@ function render(game) {
     const turnEl = document.getElementById("turn-indicator");
     if (turnEl) {
         const isMyTurn = game.turn === getUserId();
-        turnEl.innerText = isMyTurn ? "Anjaranao!" : "Anjaran'ny mpifanandrina";
-        turnEl.className = isMyTurn ? "my-turn" : "opp-turn";
+        turnEl.innerText = isMyTurn? "Anjaranao!" : "Anjaran'ny mpifanandrina";
+        turnEl.className = isMyTurn? "my-turn" : "opp-turn";
     }
 }
 
 async function handleMove(cell, game) {
     const uid = getUserId();
-    if (game.turn !== uid) return;
+    if (game.turn!== uid) return;
 
-    const myVal = game.creator.id === uid ? 1 : 2;
+    const myVal = game.creator.id === uid? 1 : 2;
     let b = [...game.board];
 
     if (!selectedCell) {
@@ -776,7 +728,7 @@ async function handleMove(cell, game) {
             selectedCell = null;
             await finalizeTurn(b, game);
         } else {
-            selectedCell = (cell.value === myVal) ? cell : null;
+            selectedCell = (cell.value === myVal)? cell : null;
             render(game);
         }
     }
@@ -784,11 +736,11 @@ async function handleMove(cell, game) {
 
 async function finalizeTurn(b, game) {
     const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id, game.gameType);
-    const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
+    const nextTurn = game.turn === game.creator.id? game.opponent.id : game.creator.id;
 
     await updateDoc(doc(db, "rooms", currentRoomId), {
         board: b,
-        turn: winner ? "end" : nextTurn,
+        turn: winner? "end" : nextTurn,
         winner: winner
     });
 }
@@ -821,7 +773,7 @@ function initChat(roomId) {
             const msg = d.data();
             const isMe = msg.senderId === getUserId();
             const div = document.createElement("div");
-            div.className = isMe ? "chat-me" : "chat-opp";
+            div.className = isMe? "chat-me" : "chat-opp";
             div.innerText = `${msg.senderName}: ${msg.text}`;
             chatMessages.appendChild(div);
         });
@@ -845,16 +797,11 @@ function initChat(roomId) {
     };
 }
 
-// ================= QUICK PLAY =================
-// ================= EVENT LISTENERS - ATO ANATY DOMContentLoaded =================
+// ================= DOM READY - ETO IHANY NY ONCLICK =================
 document.addEventListener('DOMContentLoaded', () => {
-    // GOOGLE LOGIN
     const btnGoogle = document.getElementById("btn-google");
-    if (btnGoogle) {
-        btnGoogle.onclick = () => signInWithPopup(auth, provider);
-    }
+    if (btnGoogle) btnGoogle.onclick = () => signInWithPopup(auth, provider);
 
-    // GUEST LOGIN - ITO NO TSY MIANDEHA TEO
     const btnGuest = document.getElementById("btn-guest");
     if (btnGuest) {
         btnGuest.onclick = async () => {
@@ -883,20 +830,16 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // CREATE ROOM MODAL
     const btnCreateRoom = document.getElementById("btn-create-room");
-    if (btnCreateRoom) {
-        btnCreateRoom.onclick = () => document.getElementById("modal-create").classList.remove("hidden");
-    }
+    if (btnCreateRoom) btnCreateRoom.onclick = () => document.getElementById("modal-create").classList.remove("hidden");
 
     const roomType = document.getElementById("room-type");
     if (roomType) {
         roomType.onchange = function () {
-            document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
+            document.getElementById("room-password").style.display = this.value === "private"? "block" : "none";
         };
     }
 
-    // QUICK PLAY
     const btnQuickPlay = document.getElementById("btn-quick-play");
     if (btnQuickPlay) {
         btnQuickPlay.onclick = async () => {
@@ -909,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             snap.forEach(d => {
                 const r = d.data();
-                if (r.creator.id !== uid && r.type !== "private") {
+                if (r.creator.id!== uid && r.type!== "private") {
                     foundRoom = d.id;
                 }
             });
@@ -934,7 +877,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // CONFIRM CREATE
     const btnConfirmCreate = document.getElementById("btn-confirm-create");
     if (btnConfirmCreate) {
         btnConfirmCreate.onclick = async () => {
@@ -965,7 +907,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // SAVE PROFILE
     const btnSaveProfile = document.getElementById("btn-save-profile");
     if (btnSaveProfile) {
         btnSaveProfile.onclick = async () => {
@@ -989,7 +930,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // LOGOUT
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
         btnLogout.onclick = async () => {
@@ -1010,9 +950,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load leaderboard
     loadLeaderboard();
 });
+
+// ================= EXIT BUTTON LALAO =================
+document.addEventListener('click', (e) => {
+    if (e.target.matches('#game-screen .btn-exit')) {
+        if (confirm("Hiala amin'ny lalao ve ianao?")) {
+            leaveGame();
+        }
+    }
+});
+
 // ================= LEADERBOARD =================
 async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
-    // WINNER
     const { data: winData } = await supabase
         .from("leaderboard")
         .select("*")
@@ -1033,7 +982,6 @@ async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
         }]);
     }
 
-    // LOSER
     const { data: loseData } = await supabase
         .from("leaderboard")
         .select("*")
@@ -1056,11 +1004,16 @@ async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
 }
 
 async function loadLeaderboard() {
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from("leaderboard")
         .select("*")
         .order("wins", { ascending: false })
         .limit(10);
+
+    if (error) {
+        console.log("Leaderboard error:", error);
+        return;
+    }
 
     const container = document.getElementById("leaderboard");
     if (!container) return;
