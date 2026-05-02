@@ -1028,3 +1028,160 @@ async function loadLeaderboard() {
         `;
     });
 }
+const btnGuest = document.getElementById("btn-guest");
+    if (btnGuest) {
+        btnGuest.onclick = async () => {
+            let guestUid = localStorage.getItem("nolimite_guest_uid");
+            let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
+            let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
+
+            if (!guestUid) {
+                guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+                localStorage.setItem("nolimite_guest_uid", guestUid);
+                localStorage.setItem("nolimite_guest_name", guestName);
+            }
+
+            myCurrentUid = guestUid;
+            const guestData = {
+                uid: guestUid,
+                name: guestName,
+                avatar: guestAvatar,
+                status: "online",
+                isGuest: true,
+                lastSeen: serverTimestamp()
+            };
+
+            await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
+            setupGuestUI(guestData);
+        };
+    }
+
+    const btnCreateRoom = document.getElementById("btn-create-room");
+    if (btnCreateRoom) btnCreateRoom.onclick = () => document.getElementById("modal-create").classList.remove("hidden");
+
+    const roomType = document.getElementById("room-type");
+    if (roomType) {
+        roomType.onchange = function () {
+            document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
+        };
+    }
+
+    const btnQuickPlay = document.getElementById("btn-quick-play");
+    if (btnQuickPlay) {
+        btnQuickPlay.onclick = async () => {
+            const uid = getUserId();
+            if (!uid) return;
+
+            const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(10));
+            const snap = await getDocs(q);
+            let foundRoom = null;
+
+            snap.forEach(d => {
+                const r = d.data();
+                if (r.creator.id !== uid && r.type !== "private") {
+                    foundRoom = d.id;
+                }
+            });
+            if (foundRoom) {
+                viewRoom(foundRoom);
+            } else {
+                const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
+                await setDoc(doc(db, "rooms", autoId), {
+                    creator: {
+                        id: uid,
+                        name: document.getElementById("user-name").innerText,
+                        avatar: document.getElementById("user-avatar").src
+                    },
+                    status: "waiting",
+                    type: "public",
+                    gameType: "fanorontelo",
+                    createdAt: serverTimestamp()
+                });
+                autoDeleteRoom(autoId);
+                viewRoom(autoId);
+            }
+        };
+    }
+
+    const btnConfirmCreate = document.getElementById("btn-confirm-create");
+    if (btnConfirmCreate) {
+        btnConfirmCreate.onclick = async () => {
+            const uid = getUserId();
+            if (!uid) return;
+
+            const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
+            const type = document.getElementById("room-type").value;
+            const pass = document.getElementById("room-password").value;
+            const gameType = document.getElementById("game-type").value;
+
+            await setDoc(doc(db, "rooms", name), {
+                creator: {
+                    id: uid,
+                    name: document.getElementById("user-name").innerText,
+                    avatar: document.getElementById("user-avatar").src
+                },
+                status: "waiting",
+                type: type,
+                gameType: gameType,
+                password: pass,
+                createdAt: serverTimestamp()
+            });
+
+            autoDeleteRoom(name);
+            document.getElementById("modal-create").classList.add("hidden");
+            viewRoom(name);
+        };
+    }
+
+    const btnSaveProfile = document.getElementById("btn-save-profile");
+    if (btnSaveProfile) {
+        btnSaveProfile.onclick = async () => {
+            const uid = getUserId();
+            if (!uid) return;
+            let newName = document.getElementById("edit-name").value.trim();
+            const newAvatar = document.getElementById("edit-avatar").value.trim();
+
+            if (newName.length === 0 || newName.length > 8) {
+                alert("Anarana 1 hatramin'ny 8 litera ihany azafady!");
+                return;
+            }
+
+            await updateDoc(doc(db, "users", uid), {
+                name: newName,
+                avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + uid
+            });
+            document.getElementById("user-name").innerText = newName;
+            document.getElementById("user-avatar").src = newAvatar;
+            closeEditModal();
+        };
+    }
+
+    const btnLogout = document.getElementById("btn-logout");
+    if (btnLogout) {
+        btnLogout.onclick = async () => {
+            if (confirm("Hivoaka ve ianao?")) {
+                unsubscribeAll();
+                const uid = getUserId();
+                if (uid) {
+                    await updateDoc(doc(db, "users", uid), { status: "offline" });
+                }
+                await auth.signOut();
+                localStorage.removeItem("nolimite_guest_uid");
+                localStorage.removeItem("nolimite_guest_name");
+                location.reload();
+            }
+        };
+    }
+
+    // Load leaderboard rehefa vonona ny DOM
+    loadLeaderboard();
+});
+
+// ================= EXIT BUTTON LALAO =================
+document.addEventListener('click', (e) => {
+    if (e.target.matches('#game-screen .btn-exit')) {
+        if (confirm("Hiala amin'ny lalao ve ianao?")) {
+            leaveGame();
+        }
+    }
+});
