@@ -857,4 +857,150 @@ document.getElementById("btn-quick-play").onclick = async () => {
     let foundRoom = null;
 
     snap.forEach(d => {
-        const r = d.data
+        const r = d.data();
+        if (r.creator.id !== uid && r.type !== "private") {
+            foundRoom = d.id;
+        }
+    });
+    if (foundRoom) {
+        viewRoom(foundRoom);
+    } else {
+        const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
+        await setDoc(doc(db, "rooms", autoId), {
+            creator: {
+                id: uid,
+                name: document.getElementById("user-name").innerText,
+                avatar: document.getElementById("user-avatar").src
+            },
+            status: "waiting",
+            type: "public",
+            gameType: "fanorontelo",
+            createdAt: serverTimestamp()
+        });
+        autoDeleteRoom(autoId);
+        viewRoom(autoId);
+    }
+};
+
+// ================= ROOM CREATION =================
+document.getElementById("btn-confirm-create").onclick = async () => {
+    const uid = getUserId();
+    if (!uid) return;
+
+    const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
+    const type = document.getElementById("room-type").value;
+    const pass = document.getElementById("room-password").value;
+    const gameType = document.getElementById("game-type").value;
+
+    await setDoc(doc(db, "rooms", name), {
+        creator: {
+            id: uid,
+            name: document.getElementById("user-name").innerText,
+            avatar: document.getElementById("user-avatar").src
+        },
+        status: "waiting",
+        type: type,
+        gameType: gameType,
+        password: pass,
+        createdAt: serverTimestamp()
+    });
+
+    autoDeleteRoom(name);
+    document.getElementById("modal-create").classList.add("hidden");
+    viewRoom(name);
+};
+
+// ================= LOGOUT =================
+document.getElementById("btn-logout").onclick = async () => {
+    if (confirm("Hivoaka ve ianao?")) {
+        unsubscribeAll();
+        const uid = getUserId();
+        if (uid) {
+            await updateDoc(doc(db, "users", uid), { status: "offline" });
+        }
+        await auth.signOut();
+        localStorage.removeItem("nolimite_guest_uid");
+        localStorage.removeItem("nolimite_guest_name");
+        location.reload();
+    }
+};
+
+// ================= EXIT BUTTON LALAO =================
+document.addEventListener('click', (e) => {
+    if (e.target.matches('#game-screen .btn-exit')) {
+        if (confirm("Hiala amin'ny lalao ve ianao?")) {
+            leaveGame();
+        }
+    }
+});
+
+// ================= LEADERBOARD =================
+async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
+    // WINNER
+    const { data: winData } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .eq("player_id", winnerId)
+        .single();
+
+    if (winData) {
+        await supabase
+            .from("leaderboard")
+            .update({ wins: winData.wins + 1 })
+            .eq("player_id", winnerId);
+    } else {
+        await supabase.from("leaderboard").insert([{
+            player_id: winnerId,
+            player_name: winnerName,
+            wins: 1,
+            losses: 0
+        }]);
+    }
+
+    // LOSER
+    const { data: loseData } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .eq("player_id", loserId)
+        .single();
+
+    if (loseData) {
+        await supabase
+            .from("leaderboard")
+            .update({ losses: loseData.losses + 1 })
+            .eq("player_id", loserId);
+    } else {
+        await supabase.from("leaderboard").insert([{
+            player_id: loserId,
+            player_name: loserName,
+            wins: 0,
+            losses: 1
+        }]);
+    }
+}
+
+async function loadLeaderboard() {
+    const { data } = await supabase
+        .from("leaderboard")
+        .select("*")
+        .order("wins", { ascending: false })
+        .limit(10);
+
+    const container = document.getElementById("leaderboard");
+    if (!container) return;
+    
+    container.innerHTML = "<h3>🏆 Leaderboard</h3>";
+    data.forEach((player, index) => {
+        container.innerHTML += `
+            <div class="leaderboard-row">
+                ${index + 1}. ${player.player_name} - 
+                🟢 ${player.wins} | 🔴 ${player.losses}
+            </div>
+        `;
+    });
+}
+
+// Antsoy rehefa vita load ny lobby
+document.addEventListener('DOMContentLoaded', () => {
+    loadLeaderboard();
+});
