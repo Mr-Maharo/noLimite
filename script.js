@@ -848,82 +848,13 @@ function initChat(roomId) {
 // ================= QUICK PLAY =================
 // ================= EVENT LISTENERS - ATO ANATY DOMContentLoaded =================
 document.addEventListener('DOMContentLoaded', () => {
-    // QUICK PLAY
-    const btnQuickPlay = document.getElementById("btn-quick-play");
-    if (btnQuickPlay) {
-        btnQuickPlay.onclick = async () => {
-            const uid = getUserId();
-            if (!uid) return;
-
-            const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(10));
-            const snap = await getDocs(q);
-            let foundRoom = null;
-
-            snap.forEach(d => {
-                const r = d.data();
-                if (r.creator.id !== uid && r.type !== "private") {
-                    foundRoom = d.id;
-                }
-            });
-            if (foundRoom) {
-                viewRoom(foundRoom);
-            } else {
-                const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
-                await setDoc(doc(db, "rooms", autoId), {
-                    creator: {
-                        id: uid,
-                        name: document.getElementById("user-name").innerText,
-                        avatar: document.getElementById("user-avatar").src
-                    },
-                    status: "waiting",
-                    type: "public",
-                    gameType: "fanorontelo",
-                    createdAt: serverTimestamp()
-                });
-                autoDeleteRoom(autoId);
-                viewRoom(autoId);
-            }
-        };
-    }
-
-    // ROOM CREATION
-    const btnConfirmCreate = document.getElementById("btn-confirm-create");
-    if (btnConfirmCreate) {
-        btnConfirmCreate.onclick = async () => {
-            const uid = getUserId();
-            if (!uid) return;
-
-            const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
-            const type = document.getElementById("room-type").value;
-            const pass = document.getElementById("room-password").value;
-            const gameType = document.getElementById("game-type").value;
-
-            await setDoc(doc(db, "rooms", name), {
-                creator: {
-                    id: uid,
-                    name: document.getElementById("user-name").innerText,
-                    avatar: document.getElementById("user-avatar").src
-                },
-                status: "waiting",
-                type: type,
-                gameType: gameType,
-                password: pass,
-                createdAt: serverTimestamp()
-            });
-
-            autoDeleteRoom(name);
-            document.getElementById("modal-create").classList.add("hidden");
-            viewRoom(name);
-        };
-    }
-
     // GOOGLE LOGIN
     const btnGoogle = document.getElementById("btn-google");
     if (btnGoogle) {
         btnGoogle.onclick = () => signInWithPopup(auth, provider);
     }
 
-    // GUEST LOGIN
+    // GUEST LOGIN - ITO NO TSY MIANDEHA TEO
     const btnGuest = document.getElementById("btn-guest");
     if (btnGuest) {
         btnGuest.onclick = async () => {
@@ -965,6 +896,75 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // QUICK PLAY
+    const btnQuickPlay = document.getElementById("btn-quick-play");
+    if (btnQuickPlay) {
+        btnQuickPlay.onclick = async () => {
+            const uid = getUserId();
+            if (!uid) return;
+
+            const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(10));
+            const snap = await getDocs(q);
+            let foundRoom = null;
+
+            snap.forEach(d => {
+                const r = d.data();
+                if (r.creator.id !== uid && r.type !== "private") {
+                    foundRoom = d.id;
+                }
+            });
+            if (foundRoom) {
+                viewRoom(foundRoom);
+            } else {
+                const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
+                await setDoc(doc(db, "rooms", autoId), {
+                    creator: {
+                        id: uid,
+                        name: document.getElementById("user-name").innerText,
+                        avatar: document.getElementById("user-avatar").src
+                    },
+                    status: "waiting",
+                    type: "public",
+                    gameType: "fanorontelo",
+                    createdAt: serverTimestamp()
+                });
+                autoDeleteRoom(autoId);
+                viewRoom(autoId);
+            }
+        };
+    }
+
+    // CONFIRM CREATE
+    const btnConfirmCreate = document.getElementById("btn-confirm-create");
+    if (btnConfirmCreate) {
+        btnConfirmCreate.onclick = async () => {
+            const uid = getUserId();
+            if (!uid) return;
+
+            const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
+            const type = document.getElementById("room-type").value;
+            const pass = document.getElementById("room-password").value;
+            const gameType = document.getElementById("game-type").value;
+
+            await setDoc(doc(db, "rooms", name), {
+                creator: {
+                    id: uid,
+                    name: document.getElementById("user-name").innerText,
+                    avatar: document.getElementById("user-avatar").src
+                },
+                status: "waiting",
+                type: type,
+                gameType: gameType,
+                password: pass,
+                createdAt: serverTimestamp()
+            });
+
+            autoDeleteRoom(name);
+            document.getElementById("modal-create").classList.add("hidden");
+            viewRoom(name);
+        };
+    }
+
     // SAVE PROFILE
     const btnSaveProfile = document.getElementById("btn-save-profile");
     if (btnSaveProfile) {
@@ -989,7 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // LOGOUT - ITO NY NANOME ERROR
+    // LOGOUT
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
         btnLogout.onclick = async () => {
@@ -1010,16 +1010,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load leaderboard
     loadLeaderboard();
 });
-
-// EXIT BUTTON LALAO - Mbola miasa na dia ivelan'ny DOMContentLoaded aza
-document.addEventListener('click', (e) => {
-    if (e.target.matches('#game-screen .btn-exit')) {
-        if (confirm("Hiala amin'ny lalao ve ianao?")) {
-            leaveGame();
-        }
-    }
-});
-
 // ================= LEADERBOARD =================
 async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
     // WINNER
