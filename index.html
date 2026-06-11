@@ -2,144 +2,242 @@
 <html lang="mg">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>No Limite Fanorona - Play Malagasy Fanorona Telo Online</title>
-    <meta name="description" content="No Limite Fanorona is a modern Malagasy Fanorona Telo game. Play online free now.">
-    <meta name="keywords" content="No Limite Fanorona, Fanorona Madagascar, Malagasy board game, Fanorona Telo">
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#040208">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>NoLimite Fanorona - Lalao Malagasy Online</title>
+    <meta name="description" content="Lalao Fanorona Malagasy online maimaimpoana. Fanorontelo 3x3 sy Fanorontsivy 5x5. Mifandimby amin'ny namana na AI.">
+    <meta name="keywords" content="Fanorona, Madagascar, Malagasy, board game, Fanorontelo, Fanorontsivy, lalao gasy">
+    <meta property="og:title" content="NoLimite Fanorona">
+    <meta property="og:description" content="Lalao Fanorona Malagasy online maimaimpoana">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- ===== LOGIN ===== -->
     <section id="login-screen" class="screen flex-center">
         <div class="auth-card glass animate-pop">
             <h1 class="logo">NOLIMITE</h1>
-            <p style="color: #bbb; margin-bottom: 20px; letter-spacing: 2px;">FANORONA ULTRA EDITION</p>
-            <button id="btn-google" class="btn-anime-google">
-                <i class="fab fa-google"></i> Midira amin'ny Google
+            <p class="auth-sub">FANORONA · LALAO MALAGASY</p>
+            <button id="btn-google" type="button" class="btn-anime-google" aria-label="Midira amin'ny Google">
+                <i class="fab fa-google" aria-hidden="true"></i> Midira amin'ny Google
             </button>
-            <button id="btn-guest" class="btn-login-guest">Compte Mpanandrana</button>
+            <div class="separator"><span>na</span></div>
+            <button id="btn-guest" type="button" class="btn-login-guest" aria-label="Miditra amin'ny kaonty mpanandrana">
+                👤 Mpanandrana fotsiny
+            </button>
+            <p class="auth-quote">"Ny fanahy no maha-olona"</p>
         </div>
     </section>
-<section id="room-lobby-screen" class="screen hidden flex-center">
-    <div class="room-lobby-container glass animate-pop">
-        <div id="room-lobby-content"></div>
-    </div>
-</section>
-    <section id="lobby-screen" class="screen hidden">
 
-        <aside class="sidebar glass">
+    <!-- ===== ROOM LOBBY ===== -->
+    <section id="room-lobby-screen" class="screen hidden flex-center" aria-label="Efitra miandry">
+        <div class="room-lobby-container glass animate-pop">
+            <div id="room-lobby-content"></div>
+        </div>
+    </section>
+
+    <!-- ===== LOBBY ===== -->
+    <section id="lobby-screen" class="screen hidden" aria-label="Lobby">
+
+        <aside class="sidebar glass" aria-label="Sidemenu">
             <div class="user-profile-sidebar">
                 <div class="avatar-glow">
-                    <img id="user-avatar" class="player-img-sidebar" src="https://api.dicebear.com/7.x/bottts/svg?seed=NoLimite" alt="Avatar">
+                    <img id="user-avatar" class="player-img-sidebar"
+                         src="https://api.dicebear.com/7.x/bottts/svg?seed=NoLimite"
+                         alt="Avatar mpilalao"
+                         onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=default'">
                 </div>
                 <div class="user-details">
                     <h3 id="user-name">Mpilalao...</h3>
-                    <div class="edit-trigger" onclick="openEditModal()">
-                        <small>Hanova mombamomba</small> ✏️
+                    <div class="edit-trigger" onclick="openEditModal()" role="button" tabindex="0"
+                         aria-label="Hanova mombamomba" onkeypress="if(event.key==='Enter')openEditModal()">
+                        ✏️ <small>Hanova mombamomba</small>
                     </div>
                 </div>
             </div>
 
             <div class="list-card-mini">
-                <h3><i class="fas fa-users"></i> Namana mavitrika</h3>
-                <div id="online-players" class="player-list-container">
-                    </div>
+                <h3><i class="fas fa-users" aria-hidden="true"></i> Mpilalao eto ankehitriny</h3>
+                <div class="search-box-mini">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="text" id="search-player" placeholder="Hitady mpilalao..." aria-label="Hitady mpilalao">
+                </div>
+                <div id="online-players" class="player-list-container" role="list" aria-label="Mpilalao mavitrika"></div>
             </div>
 
-            <nav class="sidebar-nav">
-                <button id="btn-create-room" class="btn-side btn-primary">➕ Hamorona efitra</button>
-                <button id="btn-quick-play" class="btn-side">⚡ Lalao haingana</button>
+            <nav class="sidebar-nav" aria-label="Asa lehibe">
+                <button id="btn-create-room" type="button" class="btn-side btn-primary" aria-label="Hanorina kianja vaovao">
+                    ➕ Hanorina kianja
+                </button>
+                <button id="btn-quick-play" type="button" class="btn-side" aria-label="Hifandimby haingana">
+                    ⚡ Hifandimby haingana
+                </button>
+                <button id="btn-logout" type="button" class="btn-side btn-danger-soft" aria-label="Hivoaka">
+                    🚪 Hivoaka
+                </button>
             </nav>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content" role="main">
             <div class="top-fixed glass">
                 <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="search-player" placeholder="Hitady mpilalao (UID na Anarana)...">
-                </div>
-                <div class="search-box">
-                    <i class="fas fa-home"></i>
-                    <input type="text" id="search-room" placeholder="Hitady efitra...">
+                    <i class="fas fa-home" aria-hidden="true"></i>
+                    <input type="text" id="search-room" placeholder="Hitady kianja..." aria-label="Hitady kianja">
                 </div>
             </div>
 
             <div class="content-scroll">
                 <div class="list-card glass">
-                    <h3><i class="fas fa-home"></i> Efitra noforoninao</h3>
-                    <div id="my-rooms-list" class="scroll-area">
-                        </div>
+                    <h3><i class="fas fa-home" aria-hidden="true"></i> Kianjako</h3>
+                    <div id="my-rooms-list" class="scroll-area" role="list" aria-label="Kianjako noforoniko"></div>
                 </div>
 
                 <div class="list-card glass">
-                    <h3><i class="fas fa-door-open"></i> Efitra malalaka</h3>
-                    <div id="rooms-list-dynamic" class="scroll-area">
-                        </div>
+                    <h3><i class="fas fa-door-open" aria-hidden="true"></i> Kianja malalaka</h3>
+                    <div id="rooms-list-dynamic" class="scroll-area" role="list" aria-label="Kianja malalaka"></div>
                 </div>
 
                 <div class="list-card glass">
-                    <h3><i class="fas fa-globe"></i> Mpilalao hafa</h3>
-                    <div id="players-list-dynamic" class="scroll-area">
-                        </div>
+                    <h3><i class="fas fa-trophy" aria-hidden="true"></i> Laharana</h3>
+                    <div id="leaderboard" class="scroll-area" role="list" aria-label="Laharana mpandresy"></div>
+                </div>
+
+                <div class="list-card glass">
+                    <h3><i class="fas fa-globe" aria-hidden="true"></i> Mpilalao hafa</h3>
+                    <div id="players-list-dynamic" class="scroll-area" role="list" aria-label="Mpilalao hafa mavitrika"></div>
                 </div>
             </div>
         </main>
     </section>
 
-    <section id="game-screen" class="screen hidden flex-center">
+    <!-- ===== GAME ===== -->
+    <section id="game-screen" class="screen hidden flex-center" aria-label="Kianja lalao" aria-modal="true">
         <div class="game-container glass animate-pop">
             <div class="game-header">
-                <button onclick="leaveRoom()" class="btn-exit">🏠 Hiala</button>
-                <div id="turn-indicator">Anjaranao</div>
-                <div id="turn-timer">30s</div>
+                <button type="button" class="btn-exit" data-action="leave-game" aria-label="Hiala amin'ny lalao">
+                    🏠 Hiala
+                </button>
+                <div id="turn-indicator" role="status" aria-live="polite">Anjaranao</div>
+                <div id="turn-timer" aria-label="Fotoana sisa" aria-live="off">⏱️ 30s</div>
             </div>
-            <div id="fanorona-grid"></div>
+
+            <div id="score-display" class="score-display" aria-live="polite">
+                <span id="score-black">⚫ <span id="count-black">10</span></span>
+                <span id="last-move-display" class="last-move"></span>
+                <span id="score-white">⚪ <span id="count-white">10</span></span>
+            </div>
+
+            <div id="fanorona-grid" role="grid" aria-label="Kianja fanorona" tabindex="0"></div>
+
+            <div class="quick-chat-bar" aria-label="Chat haingana">
+                <button type="button" class="qc-btn" data-msg="Tsara e! 👍" aria-label="Tsara e">👍</button>
+                <button type="button" class="qc-btn" data-msg="GG! 🤝" aria-label="GG">🤝</button>
+                <button type="button" class="qc-btn" data-msg="Azafady 🙏" aria-label="Azafady">🙏</button>
+                <button type="button" class="qc-btn" data-msg="Misaotra! 😊" aria-label="Misaotra">😊</button>
+            </div>
+
             <div class="chat-container glass">
-                <div id="chat-messages"></div>
+                <div id="chat-messages" role="log" aria-live="polite" aria-label="Chat hafatra"></div>
                 <div class="chat-input-area">
-                    <input id="chat-input" placeholder="Soraty eto...">
-                    <button id="chat-send">Alefa</button>
+                    <input id="chat-input" type="text" placeholder="Soraty eto..." maxlength="200"
+                           aria-label="Hafatra chat">
+                    <button id="chat-send" type="button" aria-label="Alefa hafatra">Alefa</button>
                 </div>
             </div>
         </div>
     </section>
 
-    <div id="modal-edit-profile" class="modal hidden">
+    <!-- ===== MODAL EDIT PROFILE ===== -->
+    <div id="modal-edit-profile" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
         <div class="modal-content glass animate-pop">
-            <h3>Hanova mombamomba</h3>
+            <h3 id="modal-edit-title">✏️ Hanova mombamomba</h3>
             <div class="input-group">
-                <label>Anarana (8 litera max):</label>
-                <input type="text" id="edit-name" maxlength="8">
+                <label for="edit-name">Anarana (1–8 litera):</label>
+                <input type="text" id="edit-name" maxlength="8" autocomplete="nickname" aria-describedby="edit-name-hint">
+                <small id="edit-name-hint" class="input-hint">Litera sy isa ihany</small>
             </div>
             <div class="input-group">
-                <label>URL-n'ny sary (Avatar):</label>
-                <input type="text" id="edit-avatar">
+                <label for="edit-avatar">URL-n'ny sary (Avatar):</label>
+                <input type="url" id="edit-avatar" placeholder="https://..." autocomplete="off">
+                <img id="avatar-preview" class="avatar-preview" src="" alt="Fijery avatar" style="display:none">
             </div>
             <div class="modal-buttons">
-                <button id="btn-save-profile" class="btn-save">Tehirizina</button>
-                <button onclick="closeEditModal()" class="btn-cancel">Hanafoana</button>
+                <button id="btn-save-profile" type="button" class="btn-save">💾 Tehirizina</button>
+                <button type="button" onclick="closeEditModal()" class="btn-cancel">❌ Hanafoana</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-create" class="modal hidden">
+    <!-- ===== MODAL CREATE ROOM ===== -->
+    <div id="modal-create" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
         <div class="modal-content glass animate-pop">
-            <span class="close-modal" onclick="document.getElementById('modal-create').classList.add('hidden')">&times;</span>
-            <h3>Efitra vaovao</h3>
-            <input id="room-uid-input" placeholder="Anaran'ny efitra">
-            <select id="room-type">
-                <option value="public">🌐 Malalaka</option>
-                <option value="private">🔒 Mihidy</option>
-            </select>
-            <input id="room-password" type="password" placeholder="Teny miafina" style="display:none;">
-            <button id="btn-confirm-create" class="btn-save">Hamorona</button>
+            <button type="button" class="close-modal" onclick="document.getElementById('modal-create').classList.add('hidden')"
+                    aria-label="Hikatona">&times;</button>
+            <h3 id="modal-create-title">🏠 Kianja vaovao</h3>
+
+            <div class="input-group">
+                <label for="room-uid-input">Anaran'ny kianja:</label>
+                <input id="room-uid-input" type="text" placeholder="KIANJA_01" maxlength="20" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label for="game-type">Karazana lalao:</label>
+                <select id="game-type" aria-label="Karazana lalao">
+                    <option value="fanorontelo">⬛ Fanorontelo 3×3</option>
+                    <option value="fanorontsivy">🟫 Fanorontsivy 5×5</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="room-type">Karazana kianja:</label>
+                <select id="room-type" aria-label="Karazana kianja">
+                    <option value="public">🌐 Malalaka</option>
+                    <option value="private">🔒 Mihidy</option>
+                </select>
+            </div>
+
+            <div class="input-group" id="password-group" style="display:none">
+                <label for="room-password">Teny miafina:</label>
+                <input id="room-password" type="password" placeholder="••••••" maxlength="30" autocomplete="new-password">
+            </div>
+
+            <button id="btn-confirm-create" type="button" class="btn-save">🏗️ Hamorona</button>
         </div>
     </div>
 
-    <div id="invite-notifications"></div>
+    <!-- ===== MODAL RULES ===== -->
+    <div id="modal-rules" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-rules-title">
+        <div class="modal-content glass animate-pop">
+            <button type="button" class="close-modal" onclick="document.getElementById('modal-rules').classList.add('hidden')"
+                    aria-label="Hikatona">&times;</button>
+            <h3 id="modal-rules-title">📖 Fitsipika Fanorona</h3>
+            <div class="rules-content">
+                <h4>🎯 Tanjona</h4>
+                <p>Alatsa ny vaton'ny fahavalo rehetra.</p>
+                <h4>🚶 Fihetsika</h4>
+                <p>Mifindra amin'ny toerana mifanakaiky (ila na diagonaly raha misy).</p>
+                <h4>⚔️ Fandaozana</h4>
+                <p>Raha mifindra ianao ka misy vaton'ny fahavalo ao amin'ny lalana manaraka, dia azo ny rehetra.</p>
+                <h4>🔄 Fanorontelo 3×3</h4>
+                <p>Tsy misy diagonaly afa-tsy ny afovoany. 5 vato isaky ny mpilalao.</p>
+                <h4>🔄 Fanorontsivy 5×5</h4>
+                <p>Misy diagonaly amin'ny toerana rehetra mifanaraka. 10 vato isaky ny mpilalao.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- ===== INVITE NOTIFICATIONS ===== -->
+    <div id="invite-notifications" aria-live="polite" aria-label="Fanasana"></div>
 
     <script type="module" src="script.js"></script>
 </body>
