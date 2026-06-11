@@ -3,6 +3,25 @@
 //  Voa-katsaka, voa-hasina, manara-penitra
 // =========================================================
 
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+const auth = getAuth();
+let myId = null;
+let myName = null;
+
+// Auto login guest raha tsy misy user
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        myId = user.uid;
+        myName = user.displayName || "Guest" + user.uid.substring(0,4);
+        console.log("Auth OK:", myId);
+        initLobby(); // Antsoy eto ny function mamaky rooms
+        initPlayerList();
+    } else {
+        signInAnonymously(auth).catch(err => console.error("Auth error:", err));
+    }
+});
+
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
 
 const appCheck = initializeAppCheck(app, {
