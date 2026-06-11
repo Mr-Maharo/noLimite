@@ -23,12 +23,14 @@ const supabase = createClient(
     "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
 );
 const firebaseConfig = {
-    apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
-    authDomain: "fanorona-d6911.firebaseapp.com",
-    projectId: "fanorona-d6911",
-    storageBucket: "fanorona-d6911.firebasestorage.app",
-    messagingSenderId: "882799309556",
-    appId: "1:882799309556:web:662773f9fcc8ad982ca4a1"
+  apiKey: "AIzaSyCW5xkhQQFI9YZhsjVUU05RXwE7JNjMc4w",
+  authDomain: "fanorona-mg-88384.firebaseapp.com",
+  databaseURL: "https://fanorona-mg-88384-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "fanorona-mg-88384",
+  storageBucket: "fanorona-mg-88384.firebasestorage.app",
+  messagingSenderId: "659804025087",
+  appId: "1:659804025087:web:b2a380c0544998785f9cca",
+  measurementId: "G-F93X9LWS32"
 };
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
