@@ -3,6 +3,13 @@
 //  Voa-katsaka, voa-hasina, manara-penitra
 // =========================================================
 
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
+
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('le-reCAPTCHA-key-nao'),
+  isTokenAutoRefreshEnabled: true
+});
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import {
     getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged
