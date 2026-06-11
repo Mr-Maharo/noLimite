@@ -1,690 +1,970 @@
+// =========================================================
+//  NOLIMITE FANORONA — script.js  v3.0
+//  Voa-katsaka, voa-hasina, manara-penitra
+// =========================================================
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import {
-    getAuth,
-    signInWithPopup,
-    GoogleAuthProvider,
-    onAuthStateChanged
+    getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import {
-    getFirestore,
-    collection,
-    doc,
-    setDoc,
-    updateDoc,
-    onSnapshot,
-    serverTimestamp,
-    addDoc,
-    query,
-    orderBy,
-    where,
-    limit,
-    getDocs,
-    getDoc,
-    deleteDoc
+    getFirestore, collection, doc, setDoc, updateDoc,
+    onSnapshot, serverTimestamp, addDoc, query,
+    orderBy, where, limit, getDocs, getDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
+// =========================================================
+//  CONFIG — ny key Firebase sy Supabase dia avy @ mpampiasa
+//  (tsy voaaro @ production; ampio .env raha server-side)
+// =========================================================
 const supabase = createClient(
-  "https://ajkqodiuhqzibxqjoxpl.supabase.co",
-  "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
+    "https://ajkqodiuhqzibxqjoxpl.supabase.co",
+    "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
 );
-
 const firebaseConfig = {
-  apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
-  authDomain: "fanorona-d6911.firebaseapp.com",
-  databaseURL: "https://fanorona-d6911-default-rtdb.firebaseio.com",
-  projectId: "fanorona-d6911",
-  storageBucket: "fanorona-d6911.firebasestorage.app",
-  messagingSenderId: "882799309556",
-  appId: "1:882799309556:web:662773f9fcc8ad982ca4a1",
-  measurementId: "G-DL0KC683X8"
+    apiKey: "AIzaSyCeeK9mTTNb5f5t3xM8K7WnxOij6uY7THM",
+    authDomain: "fanorona-d6911.firebaseapp.com",
+    projectId: "fanorona-d6911",
+    storageBucket: "fanorona-d6911.firebasestorage.app",
+    messagingSenderId: "882799309556",
+    appId: "1:882799309556:web:662773f9fcc8ad982ca4a1"
 };
-
-const app = initializeApp(firebaseConfig);
+const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db   = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-let currentRoomId = null;
-let selectedCell = null;
-let myCurrentUid = null;
-let isAiThinking = false;
+// =========================================================
+//  ÉTAT GLOBAL
+// =========================================================
+let currentRoomId   = null;
+let selectedCell    = null;
+let myCurrentUid    = null;
+let isAiThinking    = false;
 let turnTimerInterval = null;
+let lastMovedCellId = null;
 
-let unsubscribeRoom = null;
+let unsubscribeRoom      = null;
 let unsubscribeRoomLobby = null;
-let unsubscribeChat = null;
-let unsubscribePlayers = null;
-let unsubscribeRooms = null;
+let unsubscribeChat      = null;
+let unsubscribePlayers   = null;
+let unsubscribeRooms     = null;
+let unsubscribeInvites   = null;
 
-function playSound(type) {}
+// =========================================================
+//  UTILITIES
+// =========================================================
 function getUserId() { return myCurrentUid || auth.currentUser?.uid || null; }
 
-function unsubscribeAll() {
-    if (unsubscribeRoom) unsubscribeRoom();
-    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
-    if (unsubscribeChat) unsubscribeChat();
-    if (unsubscribePlayers) unsubscribePlayers();
-    if (unsubscribeRooms) unsubscribeRooms();
-    if (turnTimerInterval) clearInterval(turnTimerInterval);
+function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
 }
 
+function slugify(str) {
+    return String(str)
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g,'_')
+        .substring(0, 20);
+}
+
+function showToast(msg, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    container.appendChild(t);
+    setTimeout(() => t.remove(), duration);
+}
+
+function randomOhabolana() {
+    const list = [
+        "Ny fanahy no maha-olona.",
+        "Tsy misy hazo afa-tsy ny tsinjony no hita.",
+        "Aleo very tsikalakalam-bola toy izay very tsikalakalam-pihavanana.",
+        "Ny rano amoron-tsiraka tsy mety ritra.",
+        "Ny teny lava mody fohy, ny teny fohy mody lava.",
+    ];
+    return list[Math.floor(Math.random() * list.length)];
+}
+
+// =========================================================
+//  PRESENCE
+// =========================================================
+let presenceIntervalId = null;
 function setupPresence(uid) {
+    if (!uid) return;
     const userRef = doc(db, "users", uid);
     updateDoc(userRef, { status: "online", lastSeen: serverTimestamp() }).catch(() => {});
-    window.addEventListener("beforeunload", () => {
-        updateDoc(userRef, { status: "offline" }).catch(() => {});
-    });
-    setInterval(() => {
+    presenceIntervalId = setInterval(() => {
         updateDoc(userRef, { lastSeen: serverTimestamp() }).catch(() => {});
     }, 30000);
 }
-
-function initBoard(gameType) {
-    if (gameType === "fanorontsivy") {
-        return [
-            { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 }, { id: 3, x: 3, y: 0, value: 1 }, { id: 4, x: 4, y: 0, value: 1 },
-            { id: 5, x: 0, y: 1, value: 1 }, { id: 6, x: 1, y: 1, value: 1 }, { id: 7, x: 2, y: 1, value: 1 }, { id: 8, x: 3, y: 1, value: 1 }, { id: 9, x: 4, y: 1, value: 1 },
-            { id: 10, x: 0, y: 2, value: 0 }, { id: 11, x: 1, y: 2, value: 0 }, { id: 12, x: 2, y: 2, value: 0 }, { id: 13, x: 3, y: 2, value: 0 }, { id: 14, x: 4, y: 2, value: 0 },
-            { id: 15, x: 0, y: 3, value: 2 }, { id: 16, x: 1, y: 3, value: 2 }, { id: 17, x: 2, y: 3, value: 2 }, { id: 18, x: 3, y: 3, value: 2 }, { id: 19, x: 4, y: 3, value: 2 },
-            { id: 20, x: 0, y: 4, value: 2 }, { id: 21, x: 1, y: 4, value: 2 }, { id: 22, x: 2, y: 4, value: 2 }, { id: 23, x: 3, y: 4, value: 2 }, { id: 24, x: 4, y: 4, value: 2 }
-        ];
-    } else {
-        return [
-            { id: 0, x: 0, y: 0, value: 1 }, { id: 1, x: 1, y: 0, value: 1 }, { id: 2, x: 2, y: 0, value: 1 },
-            { id: 3, x: 0, y: 1, value: 0 }, { id: 4, x: 1, y: 1, value: 0 }, { id: 5, x: 2, y: 1, value: 0 },
-            { id: 6, x: 0, y: 2, value: 2 }, { id: 7, x: 1, y: 2, value: 2 }, { id: 8, x: 2, y: 2, value: 2 }
-        ];
-    }
+function teardownPresence(uid) {
+    if (presenceIntervalId) { clearInterval(presenceIntervalId); presenceIntervalId = null; }
+    if (!uid) return;
+    updateDoc(doc(db, "users", uid), { status: "offline" }).catch(() => {});
 }
 
+// =========================================================
+//  UNSUBSCRIBE ALL
+// =========================================================
+function unsubscribeAll() {
+    if (unsubscribeRoom)      { unsubscribeRoom();      unsubscribeRoom = null; }
+    if (unsubscribeRoomLobby) { unsubscribeRoomLobby(); unsubscribeRoomLobby = null; }
+    if (unsubscribeChat)      { unsubscribeChat();      unsubscribeChat = null; }
+    if (unsubscribePlayers)   { unsubscribePlayers();   unsubscribePlayers = null; }
+    if (unsubscribeRooms)     { unsubscribeRooms();     unsubscribeRooms = null; }
+    if (unsubscribeInvites)   { unsubscribeInvites();   unsubscribeInvites = null; }
+    if (turnTimerInterval)    { clearInterval(turnTimerInterval); turnTimerInterval = null; }
+}
+
+// =========================================================
+//  BOARD INIT
+// =========================================================
+function initBoard(gameType) {
+    if (gameType === "fanorontsivy") {
+        const cells = [];
+        let id = 0;
+        for (let y = 0; y < 5; y++) {
+            for (let x = 0; x < 5; x++) {
+                let value = 0;
+                if (y < 2) value = 1;
+                else if (y > 2) value = 2;
+                // rangée du milieu (y=2) : vide
+                cells.push({ id: id++, x, y, value });
+            }
+        }
+        return cells;
+    }
+    // Fanorontelo 3x3
+    return [
+        { id:0, x:0, y:0, value:1 }, { id:1, x:1, y:0, value:1 }, { id:2, x:2, y:0, value:1 },
+        { id:3, x:0, y:1, value:0 }, { id:4, x:1, y:1, value:0 }, { id:5, x:2, y:1, value:0 },
+        { id:6, x:0, y:2, value:2 }, { id:7, x:1, y:2, value:2 }, { id:8, x:2, y:2, value:2 }
+    ];
+}
+
+// =========================================================
+//  RÈGLES — Fihetsika azo atao
+// =========================================================
+function isValidMove(from, to, gameType) {
+    const dx = Math.abs(to.x - from.x);
+    const dy = Math.abs(to.y - from.y);
+    if (dx > 1 || dy > 1) return false;
+    if (dx === 0 && dy === 0) return false;
+    // Fanorontelo 3x3 : diagonale @ afovoany ihany
+    if (gameType === "fanorontelo") {
+        if (dx === 1 && dy === 1) {
+            // Diagonale autorisée uniquement si from ou to est le centre (1,1)
+            return (from.x === 1 && from.y === 1) || (to.x === 1 && to.y === 1);
+        }
+    }
+    return true;
+}
+
+// =========================================================
+//  CAPTURES
+// =========================================================
 function getCaptures(board, fromCell, toCell, myVal, gameType) {
-    const maxSize = gameType === "fanorontsivy" ? 4 : 2;
     const opponentVal = myVal === 1 ? 2 : 1;
     const captured = [];
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
 
+    // Direction avant (approche)
     let nx = toCell.x + dx;
     let ny = toCell.y + dy;
-    while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
-        const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value !== opponentVal) break;
-        captured.push(nextCell.id);
-        nx += dx;
-        ny += dy;
+    while (nx >= 0 && nx <= (gameType==="fanorontsivy"?4:2) &&
+           ny >= 0 && ny <= (gameType==="fanorontsivy"?4:2)) {
+        const c = board.find(c => c.x === nx && c.y === ny);
+        if (!c || c.value !== opponentVal) break;
+        captured.push(c.id);
+        nx += dx; ny += dy;
     }
 
+    // Direction arrière (retrait)
     nx = fromCell.x - dx;
     ny = fromCell.y - dy;
-    while (nx >= 0 && nx <= maxSize && ny >= 0 && ny <= maxSize) {
-        const nextCell = board.find(c => c.x === nx && c.y === ny);
-        if (!nextCell || nextCell.value !== opponentVal) break;
-        captured.push(nextCell.id);
-        nx -= dx;
-        ny -= dy;
+    while (nx >= 0 && nx <= (gameType==="fanorontsivy"?4:2) &&
+           ny >= 0 && ny <= (gameType==="fanorontsivy"?4:2)) {
+        const c = board.find(c => c.x === nx && c.y === ny);
+        if (!c || c.value !== opponentVal) break;
+        captured.push(c.id);
+        nx -= dx; ny -= dy;
     }
 
     return [...new Set(captured)];
 }
 
+// =========================================================
+//  WIN CHECK
+// =========================================================
 function checkWinnerFanorona(board, creatorId, opponentId, gameType) {
-    const creatorStones = board.filter(c => c.value === 1).length;
-    const opponentStones = board.filter(c => c.value === 2).length;
-    if (creatorStones === 0) return opponentId;
-    if (opponentStones === 0) return creatorId;
+    if (!board || !creatorId || !opponentId) return null;
+    const p1 = board.filter(c => c.value === 1);
+    const p2 = board.filter(c => c.value === 2);
+    if (p1.length === 0) return opponentId;
+    if (p2.length === 0) return creatorId;
 
     const canMove = (val) => {
         const stones = board.filter(c => c.value === val);
-        for (let stone of stones) {
-            for (let cell of board) {
-                if (cell.value === 0) {
-                    const dx = Math.abs(cell.x - stone.x);
-                    const dy = Math.abs(cell.y - stone.y);
-                    if (dx <= 1 && dy <= 1) return true;
-                }
+        const empty  = board.filter(c => c.value === 0);
+        for (let s of stones) {
+            for (let e of empty) {
+                if (isValidMove(s, e, gameType)) return true;
             }
         }
         return false;
     };
-
     if (!canMove(1)) return opponentId;
     if (!canMove(2)) return creatorId;
     return null;
 }
 
+// =========================================================
+//  COORDONNÉES → notation algébrique (A1, B2…)
+// =========================================================
+function cellToNotation(cell) {
+    const cols = ['A','B','C','D','E'];
+    return cols[cell.x] + (cell.y + 1);
+}
+
+// =========================================================
+//  AI
+// =========================================================
 async function aiMove(game) {
-    if (game.turn !== 'AI_BOT' || game.status !== 'playing') return;
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    if (!game || game.turn !== 'AI_BOT' || game.status !== 'playing') return;
+    if (!currentRoomId) return;
+    if (isAiThinking) return;
+    isAiThinking = true;
 
-    const aiStones = game.board.filter(cell => cell.value === 2);
-    const emptyCells = game.board.filter(cell => cell.value === 0);
-    if (aiStones.length === 0 || emptyCells.length === 0) return;
+    try {
+        await new Promise(r => setTimeout(r, 1000 + Math.random() * 600));
+        if (!currentRoomId) { isAiThinking = false; return; }
 
-    let bestMove = null;
-    let maxCaptures = -1;
+        const board = game.board;
+        if (!Array.isArray(board)) { isAiThinking = false; return; }
 
-    for (let stone of aiStones) {
-        for (let empty of emptyCells) {
-            const dx = Math.abs(empty.x - stone.x);
-            const dy = Math.abs(empty.y - stone.y);
-            if (dx <= 1 && dy <= 1) {
-                const captures = getCaptures(game.board, stone, empty, 2, game.gameType);
-                if (captures.length > maxCaptures) {
-                    maxCaptures = captures.length;
-                    bestMove = { from: stone, to: empty, captures };
+        const aiStones    = board.filter(c => c.value === 2);
+        const emptyCells  = board.filter(c => c.value === 0);
+        if (aiStones.length === 0 || emptyCells.length === 0) { isAiThinking = false; return; }
+
+        let bestMove = null;
+        let maxCaptures = -1;
+
+        for (const stone of aiStones) {
+            for (const empty of emptyCells) {
+                if (!isValidMove(stone, empty, game.gameType)) continue;
+                const caps = getCaptures(board, stone, empty, 2, game.gameType);
+                if (caps.length > maxCaptures) {
+                    maxCaptures = caps.length;
+                    bestMove = { from: stone, to: empty, captures: caps };
                 }
             }
         }
-    }
 
-    if (!bestMove) {
-        const randomStone = aiStones[Math.floor(Math.random() * aiStones.length)];
-        const validMoves = emptyCells.filter(cell => {
-            const dx = Math.abs(cell.x - randomStone.x);
-            const dy = Math.abs(cell.y - randomStone.y);
-            return dx <= 1 && dy <= 1;
-        });
-        if (validMoves.length > 0) {
-            bestMove = {
-                from: randomStone,
-                to: validMoves[Math.floor(Math.random() * validMoves.length)],
-                captures: []
-            };
+        // Fallback : mouvement aléatoire
+        if (!bestMove || maxCaptures === 0) {
+            const moves = [];
+            for (const stone of aiStones) {
+                for (const empty of emptyCells) {
+                    if (isValidMove(stone, empty, game.gameType)) {
+                        moves.push({ from: stone, to: empty, captures: [] });
+                    }
+                }
+            }
+            if (moves.length > 0) {
+                bestMove = moves[Math.floor(Math.random() * moves.length)];
+            }
         }
-    }
 
-    if (bestMove) {
-        let newBoard = game.board.map(cell => {
+        if (!bestMove) { isAiThinking = false; return; }
+
+        let newBoard = board.map(cell => {
             if (cell.id === bestMove.from.id) return { ...cell, value: 0 };
-            if (cell.id === bestMove.to.id) return { ...cell, value: 2 };
+            if (cell.id === bestMove.to.id)   return { ...cell, value: 2 };
+            if (bestMove.captures.includes(cell.id)) return { ...cell, value: 0 };
             return cell;
         });
 
-        if (bestMove.captures.length > 0) {
-            playSound('capture');
-            newBoard = newBoard.map(cell =>
-                bestMove.captures.includes(cell.id) ? { ...cell, value: 0 } : cell
-            );
-        }
-
         await updateDoc(doc(db, "rooms", currentRoomId), {
             board: newBoard,
-            turn: game.creator.id
+            turn: game.creator.id,
+            lastMove: cellToNotation(bestMove.from) + '-' + cellToNotation(bestMove.to)
         });
-        playSound('click');
+    } catch (err) {
+        console.error("AI error:", err);
+    } finally {
+        isAiThinking = false;
     }
 }
 
-function setupGuestUI(user) {
-    document.getElementById("login-screen").classList.add("hidden");
-    document.getElementById("lobby-screen").classList.remove("hidden");
-    document.getElementById("user-name").innerText = user.name;
-    document.getElementById("user-avatar").src = user.avatar;
-    setupPresence(user.uid);
-    initLobby();
-    initPlayerList();
-    initInvites(user.uid);
-}
-
+// =========================================================
+//  AUTH STATE
+// =========================================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         myCurrentUid = user.uid;
-        document.getElementById("login-screen").classList.add("hidden");
-        document.getElementById("lobby-screen").classList.remove("hidden");
-
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        let finalName = user.displayName;
-        let finalAvatar = user.photoURL;
-
-        if (userSnap.exists()) {
-            const data = userSnap.data();
-            finalName = data.name || user.displayName;
-            finalAvatar = data.avatar || user.photoURL;
+        const userRef  = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef).catch(() => null);
+        let finalName   = user.displayName || "Mpilalao";
+        let finalAvatar = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+        if (userSnap && userSnap.exists()) {
+            const d = userSnap.data();
+            finalName   = d.name   || finalName;
+            finalAvatar = d.avatar || finalAvatar;
         }
-
         await setDoc(userRef, {
-            uid: user.uid,
-            name: finalName,
-            avatar: finalAvatar,
-            status: "online",
-            lastSeen: serverTimestamp()
-        }, { merge: true });
-
+            uid: user.uid, name: finalName, avatar: finalAvatar,
+            status: "online", lastSeen: serverTimestamp()
+        }, { merge: true }).catch(() => {});
         setupGuestUI({ uid: user.uid, name: finalName, avatar: finalAvatar });
     } else {
-        if (!localStorage.getItem("nolimite_guest_uid")) {
-            document.getElementById("login-screen").classList.remove("hidden");
-            document.getElementById("lobby-screen").classList.add("hidden");
+        const guestUid = localStorage.getItem("nolimite_guest_uid");
+        if (!guestUid) {
+            showScreen('login-screen');
         }
     }
 });
 
-async function autoDeleteRoom(roomId) {
-    setTimeout(async () => {
-        const roomRef = doc(db, "rooms", roomId);
-        const snap = await getDoc(roomRef);
-        if (snap.exists() && snap.data().status === "waiting") {
-            await deleteDoc(roomRef);
-        }
+// =========================================================
+//  SETUP UI after login
+// =========================================================
+function setupGuestUI(user) {
+    myCurrentUid = user.uid;
+    const nameEl   = document.getElementById("user-name");
+    const avatarEl = document.getElementById("user-avatar");
+    if (nameEl)   nameEl.textContent = user.name;
+    if (avatarEl) avatarEl.src = user.avatar;
+    showScreen('lobby-screen');
+    setupPresence(user.uid);
+    initLobby();
+    initPlayerList();
+    initInvites(user.uid);
+    loadLeaderboard();
+}
+
+function showScreen(id) {
+    ['login-screen','lobby-screen','room-lobby-screen','game-screen'].forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.classList.toggle('hidden', s !== id);
+    });
+}
+
+// =========================================================
+//  AUTO-DELETE ROOM
+// =========================================================
+let autoDeleteTimers = {};
+function autoDeleteRoom(roomId) {
+    if (autoDeleteTimers[roomId]) clearTimeout(autoDeleteTimers[roomId]);
+    autoDeleteTimers[roomId] = setTimeout(async () => {
+        try {
+            const snap = await getDoc(doc(db, "rooms", roomId));
+            if (snap.exists() && snap.data().status === "waiting") {
+                await deleteDoc(doc(db, "rooms", roomId));
+            }
+        } catch(e) { /* ignoré */ }
+        delete autoDeleteTimers[roomId];
     }, 5 * 60 * 1000);
 }
 
+// =========================================================
+//  DELETE ROOM (window-exposed)
+// =========================================================
 window.deleteRoom = async (roomId) => {
-    if (confirm("Tena hovafanao ve ity efitra ity?")) {
+    if (!confirm("Tena fafana ity kianja ity?")) return;
+    try {
         await deleteDoc(doc(db, "rooms", roomId));
         leaveRoomLobby();
+        showToast("Voafafa ny kianja", "success");
+    } catch(e) {
+        showToast("Tsy afaka namafa: " + e.message, "error");
     }
 };
 
+// =========================================================
+//  SEND INVITE
+// =========================================================
 window.sendInvite = async (targetUid) => {
     const uid = getUserId();
     if (!uid) return;
-    const myName = document.getElementById("user-name").innerText;
-    await addDoc(collection(db, "invites"), {
-        from: uid,
-        fromName: myName,
-        to: targetUid,
-        status: "pending",
-        createdAt: serverTimestamp()
-    });
-    playSound('invite');
-    alert("Nalefa ny fanasana!");
+    if (uid === targetUid) return;
+    try {
+        const myName = document.getElementById("user-name")?.textContent || "Mpilalao";
+        await addDoc(collection(db, "invites"), {
+            from: uid, fromName: escapeHtml(myName),
+            to: targetUid, status: "pending",
+            createdAt: serverTimestamp()
+        });
+        showToast("Nalefa ny fanasana! 🎮", "success");
+    } catch(e) {
+        showToast("Tsy afaka nandefa fanasana", "error");
+    }
 };
 
+// =========================================================
+//  INVITES
+// =========================================================
+const shownInvites = new Set();
 function initInvites(uid) {
-    const q = query(collection(db, "invites"), where("to", "==", uid), where("status", "==", "pending"));
-    onSnapshot(q, (snap) => {
-        snap.forEach(d => showInviteUI(d.id, d.data()));
-    });
+    if (unsubscribeInvites) { unsubscribeInvites(); unsubscribeInvites = null; }
+    const q = query(collection(db, "invites"),
+        where("to", "==", uid), where("status", "==", "pending"), limit(5));
+    unsubscribeInvites = onSnapshot(q, (snap) => {
+        snap.forEach(d => {
+            if (!shownInvites.has(d.id)) {
+                shownInvites.add(d.id);
+                showInviteUI(d.id, d.data());
+            }
+        });
+    }, (err) => console.warn("Invites error:", err));
 }
 
 function showInviteUI(inviteId, invite) {
-    if (document.getElementById("invite-" + inviteId)) return;
     const container = document.getElementById("invite-notifications");
     if (!container) return;
+    if (document.getElementById("invite-" + inviteId)) return;
     const box = document.createElement("div");
     box.id = "invite-" + inviteId;
-    box.className = "invite-popup glass animate-pop";
+    box.className = "invite-popup animate-pop";
+    box.setAttribute("role", "alert");
     box.innerHTML = `
-        <p>🎮 <b>${invite.fromName}</b> manasa anao!</p>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-save" onclick="acceptInvite('${inviteId}', '${invite.from}', '${invite.fromName}')">Ekena</button>
-            <button class="btn-cancel" onclick="rejectInvite('${inviteId}')">Tsia</button>
-        </div>
-    `;
+        <p>🎮 <b>${escapeHtml(invite.fromName)}</b> manasa anao!</p>
+        <div class="invite-actions">
+            <button class="btn-save" type="button"
+                onclick="acceptInvite('${escapeHtml(inviteId)}','${escapeHtml(invite.from)}','${escapeHtml(invite.fromName)}')">
+                ✅ Ekena
+            </button>
+            <button class="btn-cancel" type="button"
+                onclick="rejectInvite('${escapeHtml(inviteId)}')">
+                ❌ Tsia
+            </button>
+        </div>`;
     container.appendChild(box);
+    setTimeout(() => box.remove(), 30000);
 }
 
 window.acceptInvite = async (inviteId, senderUid, senderName) => {
     const uid = getUserId();
     if (!uid) return;
     document.getElementById("invite-" + inviteId)?.remove();
-    const roomId = "INVITE_" + Math.floor(Math.random() * 10000);
-    const myName = document.getElementById("user-name").innerText;
-    const myAvatar = document.getElementById("user-avatar").src;
-
-    await setDoc(doc(db, "rooms", roomId), {
-        creator: { id: senderUid, name: senderName, avatar: "" },
-        opponent: { id: uid, name: myName, avatar: myAvatar },
-        status: "playing",
-        gameType: "fanorontelo",
-        turn: senderUid,
-        board: initBoard("fanorontelo"),
-        createdAt: serverTimestamp()
-    });
-    await updateDoc(doc(db, "invites", inviteId), { status: "accepted" });
-    enterGame(roomId);
+    const roomId = "INV" + (Math.random().toString(36).substr(2,6)).toUpperCase();
+    const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
+    const myAvatar = document.getElementById("user-avatar")?.src || '';
+    try {
+        await setDoc(doc(db, "rooms", roomId), {
+            creator:  { id: senderUid, name: escapeHtml(senderName), avatar: "" },
+            opponent: { id: uid, name: escapeHtml(myName), avatar: myAvatar },
+            status: "playing", gameType: "fanorontelo",
+            board: initBoard("fanorontelo"),
+            turn: senderUid, createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "invites", inviteId), {
+            status: "accepted", respondedAt: serverTimestamp()
+        });
+        enterGame(roomId);
+    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
 };
 
 window.rejectInvite = async (inviteId) => {
     document.getElementById("invite-" + inviteId)?.remove();
-    await updateDoc(doc(db, "invites", inviteId), { status: "rejected" });
+    try {
+        await updateDoc(doc(db, "invites", inviteId), {
+            status: "rejected", respondedAt: serverTimestamp()
+        });
+    } catch(e) { /* ignoré */ }
 };
 
-async function initPlayerList() {
-    if (unsubscribePlayers) unsubscribePlayers();
-    const q = query(collection(db, "users"), where("status", "==", "online"), limit(20));
+// =========================================================
+//  PLAYER LIST
+// =========================================================
+function initPlayerList() {
+    if (unsubscribePlayers) { unsubscribePlayers(); unsubscribePlayers = null; }
+    const q = query(collection(db, "users"), where("status","==","online"), limit(20));
     unsubscribePlayers = onSnapshot(q, (snapshot) => {
-        const listSidebar = document.getElementById("online-players");
-        const listMain = document.getElementById("players-list-dynamic");
-        if (listSidebar) listSidebar.innerHTML = "";
-        if (listMain) listMain.innerHTML = "";
+        const sideEl   = document.getElementById("online-players");
+        const mainEl   = document.getElementById("players-list-dynamic");
+        const fragment = document.createDocumentFragment();
+        const fragment2 = document.createDocumentFragment();
+        let hasPlayers = false;
 
-        snapshot.forEach((doc) => {
-            const userData = doc.data();
-            if (userData.uid !== getUserId()) {
-                const html = `
-                    <div class="player-item">
-                        <img src="${userData.avatar}" class="player-avatar-mini">
-                        <div class="player-info">
-                            <span class="player-name-mini">${userData.name}</span>
-                            <div class="status-indicator"><span class="dot-online"></span> Online</div>
-                        </div>
-                        <button class="btn-invite-mini" onclick="sendInvite('${userData.uid}')">Hantsy</button>
-                    </div>`;
-                if (listSidebar) listSidebar.innerHTML += html;
-                if (listMain) listMain.innerHTML += html;
-            }
+        snapshot.forEach(d => {
+            const u = d.data();
+            if (!u.uid || u.uid === getUserId()) return;
+            hasPlayers = true;
+            const div = document.createElement("div");
+            div.className = "player-item";
+            div.setAttribute("role","listitem");
+            div.innerHTML = `
+                <img src="${escapeHtml(u.avatar||'')}" class="player-avatar-mini" alt="${escapeHtml(u.name||'')}"
+                     onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=default'">
+                <div class="player-info">
+                    <span class="player-name-mini">${escapeHtml(u.name||'Mpilalao')}</span>
+                    <div class="status-indicator"><span class="dot-online"></span> Online</div>
+                </div>
+                <button class="btn-invite-mini" type="button"
+                    onclick="sendInvite('${escapeHtml(u.uid)}')"
+                    aria-label="Hantsy ${escapeHtml(u.name||'')}">Hantsy</button>`;
+            const div2 = div.cloneNode(true);
+            fragment.appendChild(div);
+            fragment2.appendChild(div2);
         });
-    });
+
+        if (sideEl) {
+            sideEl.innerHTML = '';
+            if (!hasPlayers) sideEl.innerHTML = '<div class="empty-state"><p>Tsy misy mpilalao hafa eto</p></div>';
+            else sideEl.appendChild(fragment);
+        }
+        if (mainEl) {
+            mainEl.innerHTML = '';
+            if (!hasPlayers) mainEl.innerHTML = '<div class="empty-state"><p>Tsy misy mpilalao hafa eto</p></div>';
+            else mainEl.appendChild(fragment2);
+        }
+    }, err => console.warn("Players error:", err));
 }
 
+// =========================================================
+//  LOBBY (rooms list)
+// =========================================================
 function initLobby() {
-    if (unsubscribeRooms) unsubscribeRooms();
-    unsubscribeRooms = onSnapshot(collection(db, "rooms"), (snap) => {
-        const publicList = document.getElementById("rooms-list-dynamic");
-        const myRoomsList = document.getElementById("my-rooms-list");
-
-        if (publicList) publicList.innerHTML = "";
-        if (myRoomsList) myRoomsList.innerHTML = "";
+    if (unsubscribeRooms) { unsubscribeRooms(); unsubscribeRooms = null; }
+    const q = query(collection(db, "rooms"), where("status","==","waiting"), limit(30));
+    unsubscribeRooms = onSnapshot(q, (snap) => {
+        const publicFrag  = document.createDocumentFragment();
+        const myFrag      = document.createDocumentFragment();
+        let hasPublic = false, hasMy = false;
 
         snap.forEach(d => {
             const r = d.data();
-            const roomId = d.id;
-            if (r.status === "waiting") {
-                const isPrivate = r.type === "private" ? "🔒" : "🌐";
-                const gameLabel = r.gameType === "fanorontsivy" ? "5x5" : "3x3";
-                const playerBadge = `<span class="badge-waiting">● ${gameLabel} 1/2</span>`;
+            const roomId  = d.id;
+            const safeId  = escapeHtml(roomId);
+            const gameLabel = r.gameType === "fanorontsivy" ? "5×5" : "3×3";
+            const isPrivate = r.type === "private";
 
-                if (r.creator.id === getUserId()) {
-                    if (myRoomsList) {
-                        myRoomsList.innerHTML += `
-                            <div class="room-card glass animate-pop">
-                                <span>🏠 ${roomId} (${gameLabel})</span>
-                                <div class="room-actions">
-                                    <button class="btn-cancel" onclick="deleteRoom('${roomId}')">🗑️</button>
-                                    <button onclick="viewRoom('${roomId}')">Hiditra</button>
-                                </div>
-                            </div>`;
-                    }
-                } else if (r.type !== "private") {
-                    if (publicList) {
-                        publicList.innerHTML += `
-                            <div class="room-card glass animate-pop">
-                                <span>${isPrivate} ${roomId} (${gameLabel})</span>
-                                ${playerBadge}
-                                <button onclick="viewRoom('${roomId}')">Hijery</button>
-                            </div>`;
-                    }
-                }
+            if (r.creator?.id === getUserId()) {
+                hasMy = true;
+                const div = document.createElement("div");
+                div.className = "room-card animate-pop";
+                div.setAttribute("role","listitem");
+                div.innerHTML = `
+                    <span>🏠 ${safeId} (${gameLabel})</span>
+                    <span class="badge-waiting">⏳ 1/2</span>
+                    <div class="room-actions">
+                        <button class="btn-cancel" type="button" onclick="deleteRoom('${safeId}')" aria-label="Fafao">🗑️</button>
+                        <button type="button" class="room-card-btn" onclick="viewRoom('${safeId}')">Hiditra</button>
+                    </div>`;
+                myFrag.appendChild(div);
+            } else if (!isPrivate) {
+                hasPublic = true;
+                const div = document.createElement("div");
+                div.className = "room-card animate-pop";
+                div.setAttribute("role","listitem");
+                div.innerHTML = `
+                    <span>🌐 ${safeId} (${gameLabel})</span>
+                    <span class="badge-waiting">⏳ 1/2</span>
+                    <button type="button" class="room-card-btn" onclick="viewRoom('${safeId}')">Hiditra</button>`;
+                publicFrag.appendChild(div);
             }
         });
-    });
 
+        const publicEl = document.getElementById("rooms-list-dynamic");
+        const myEl     = document.getElementById("my-rooms-list");
+        if (publicEl) {
+            publicEl.innerHTML = '';
+            if (!hasPublic) publicEl.innerHTML = '<div class="empty-state"><p>Tsy misy kianja malalaka eto<br>Mamorona ianao! 🏠</p></div>';
+            else publicEl.appendChild(publicFrag);
+        }
+        if (myEl) {
+            myEl.innerHTML = '';
+            if (!hasMy) myEl.innerHTML = '<div class="empty-state"><p>Tsy mbola nanao kianja ianao</p></div>';
+            else myEl.appendChild(myFrag);
+        }
+    }, err => console.warn("Rooms error:", err));
+}
+
+// =========================================================
+//  SEARCH (debounced)
+// =========================================================
+function debounce(fn, ms) {
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+function setupSearch() {
     const searchPlayer = document.getElementById("search-player");
     if (searchPlayer) {
-        searchPlayer.addEventListener("input", (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll("#players-list-dynamic .player-item").forEach(player => {
-                const name = player.querySelector(".player-name-mini").innerText.toLowerCase();
-                player.style.display = name.includes(searchTerm) ? "flex" : "none";
+        searchPlayer.addEventListener("input", debounce((e) => {
+            const term = (e.target.value || '').toLowerCase();
+            document.querySelectorAll("#players-list-dynamic .player-item, #online-players .player-item").forEach(el => {
+                const name = (el.querySelector(".player-name-mini")?.textContent || '').toLowerCase();
+                el.style.display = name.includes(term) ? "" : "none";
             });
-        });
+        }, 250));
     }
-
     const searchRoom = document.getElementById("search-room");
     if (searchRoom) {
-        searchRoom.addEventListener("input", (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll("#rooms-list-dynamic .room-card").forEach(room => {
-                const roomName = room.querySelector("span").innerText.toLowerCase();
-                room.style.display = roomName.includes(searchTerm) ? "flex" : "none";
+        searchRoom.addEventListener("input", debounce((e) => {
+            const term = (e.target.value || '').toLowerCase();
+            document.querySelectorAll("#rooms-list-dynamic .room-card, #my-rooms-list .room-card").forEach(el => {
+                const name = (el.querySelector("span")?.textContent || '').toLowerCase();
+                el.style.display = name.includes(term) ? "" : "none";
             });
-        });
+        }, 250));
     }
 }
 
+// =========================================================
+//  VIEW ROOM (enter lobby before game starts)
+// =========================================================
 window.viewRoom = async (id) => {
-    const roomRef = doc(db, "rooms", id);
-    const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) return alert("Tsy misy io efitra io");
+    if (!id || typeof id !== 'string') return;
+    try {
+        const roomSnap = await getDoc(doc(db, "rooms", id));
+        if (!roomSnap.exists()) { showToast("Tsy misy io kianja io", "error"); return; }
+        const r = roomSnap.data();
+        if (!r) return;
 
-    const r = roomSnap.data();
-    if (r.type === "private" && r.creator.id !== getUserId()) {
-        if (prompt("Teny miafina:") !== r.password) return alert("Diso!");
+        if (r.type === "private" && r.creator?.id !== getUserId()) {
+            const entered = prompt("Teny miafina:");
+            if (entered === null) return; // user cancelled
+            if (entered !== r.password) { showToast("Teny miafina diso!", "error"); return; }
+        }
+
+        currentRoomId = id;
+        showScreen('room-lobby-screen');
+
+        if (unsubscribeRoomLobby) { unsubscribeRoomLobby(); unsubscribeRoomLobby = null; }
+        unsubscribeRoomLobby = onSnapshot(doc(db, "rooms", id), (snap) => {
+            if (!snap.exists()) { leaveRoomLobby(); return; }
+            const game = snap.data();
+            if (!game) { leaveRoomLobby(); return; }
+            renderRoomLobby(game, id);
+            if (game.status === "playing") enterGame(id);
+        }, err => { showToast("Tapaka ny tambazotra", "error"); leaveRoomLobby(); });
+    } catch(e) {
+        showToast("Hadisoana: " + e.message, "error");
     }
-
-    currentRoomId = id;
-    document.getElementById("lobby-screen").classList.add("hidden");
-    document.getElementById("room-lobby-screen").classList.remove("hidden");
-
-    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
-    unsubscribeRoomLobby = onSnapshot(roomRef, (snap) => {
-        const game = snap.data();
-        if (!game) return;
-        renderRoomLobby(game, id);
-        if (game.status === "playing") enterGame(id);
-    });
 };
 
+// =========================================================
+//  RENDER ROOM LOBBY
+// =========================================================
 function renderRoomLobby(room, roomId) {
     const lobbyEl = document.getElementById("room-lobby-content");
-    const isCreator = room.creator.id === getUserId();
-    const isFull = room.opponent?.id;
-    const isPlayingWithAI = room.opponent?.id === 'AI_BOT';
-    const gameLabel = room.gameType === "fanorontsivy" ? "Fanorontsivy 5x5" : "Fanorontelo 3x3";
+    if (!lobbyEl) return;
+    const isCreator = room.creator?.id === getUserId();
+    const isFull    = !!room.opponent?.id;
+    const isAI      = room.opponent?.id === 'AI_BOT';
+    const gameLabel = room.gameType === "fanorontsivy" ? "Fanorontsivy 5×5" : "Fanorontelo 3×3";
+    const safeId    = escapeHtml(roomId);
 
     lobbyEl.innerHTML = `
         <div class="room-lobby-header">
-            <h2>🏠 ${roomId} - ${gameLabel}</h2>
-            <button onclick="leaveRoomLobby()" class="btn-exit">← Hiverina</button>
+            <h2>🏠 ${safeId} — ${escapeHtml(gameLabel)}</h2>
+            <button type="button" onclick="leaveRoomLobby()" class="btn-exit" aria-label="Hiverina">← Hiverina</button>
         </div>
         <div class="players-vs">
             <div class="player-slot ${isCreator ? 'you' : ''}">
-                <img src="${room.creator.avatar}" class="player-img-large">
-                <h3>${room.creator.name}</h3>
+                <img src="${escapeHtml(room.creator?.avatar||'')}" class="player-img-large"
+                     alt="${escapeHtml(room.creator?.name||'')}"
+                     onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=creator'">
+                <h3>${escapeHtml(room.creator?.name||'Mpilalao')}</h3>
                 <span class="badge-host">Mpamorona</span>
             </div>
             <div class="vs-text">VS</div>
             <div class="player-slot ${!isCreator && isFull ? 'you' : ''}">
                 ${isFull ? `
-                    <img src="${room.opponent.avatar}" class="player-img-large">
-                    <h3>${room.opponent.name}</h3>
-                    ${isPlayingWithAI ? '<span class="badge-ai">🤖 AI</span>' : ''}
+                    <img src="${escapeHtml(room.opponent?.avatar||'')}" class="player-img-large"
+                         alt="${escapeHtml(room.opponent?.name||'')}"
+                         onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=opp'">
+                    <h3>${escapeHtml(room.opponent?.name||'Mpilalao')}</h3>
+                    ${isAI ? '<span class="badge-ai">🤖 NOLIMITE AI</span>' : ''}
                 ` : `
                     <div class="waiting-player">
-                        <div class="spinner"></div>
+                        <div class="spinner" aria-label="Miandry" aria-busy="true"></div>
                         <p>Miandry mpifanandrina...</p>
-                        ${isCreator ? `<button onclick="playWithAI('${roomId}')" class="btn-ai">🤖 Milalao miaraka amin'ny AI</button>` : ''}
+                        ${isCreator ? `<button type="button" onclick="playWithAI('${safeId}')" class="btn-ai">🤖 Milalao amin'ny AI</button>` : ''}
                     </div>
                 `}
             </div>
         </div>
         <div class="lobby-actions">
             ${isCreator ? `
-                ${isFull ? `<button onclick="startGame('${roomId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
-                <button onclick="deleteRoom('${roomId}')" class="btn-cancel">🗑️ Fafao ny efitra</button>
+                ${isFull ? `<button type="button" onclick="startGame('${safeId}')" class="btn-primary-large">🎮 Atombohy ny lalao</button>` : ''}
+                <button type="button" onclick="deleteRoom('${safeId}')" class="btn-cancel">🗑️ Fafao ny kianja</button>
             ` : `
-                ${!isFull ? `<button onclick="joinRoom('${roomId}')" class="btn-primary-large">Hiditra amin'ny efitra</button>` : ''}
+                ${!isFull ? `<button type="button" onclick="joinRoom('${safeId}')" class="btn-primary-large">Hiditra amin'ny kianja</button>` : ''}
             `}
-        </div>
-    `;
+        </div>`;
 }
 
+// =========================================================
+//  START GAME
+// =========================================================
 window.startGame = async (roomId) => {
-    const roomRef = doc(db, "rooms", roomId);
-    const snap = await getDoc(roomRef);
-    const gameType = snap.data().gameType || "fanorontelo";
-    await updateDoc(roomRef, {
-        status: "playing",
-        board: initBoard(gameType),
-        turn: getUserId()
-    });
+    const uid = getUserId();
+    if (!uid) return;
+    try {
+        const snap = await getDoc(doc(db, "rooms", roomId));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.status === 'playing') return; // déjà démarré
+        if (!data.opponent?.id) { showToast("Miandry mpifanandrina aloha", "info"); return; }
+        const gameType = data.gameType || "fanorontelo";
+        await updateDoc(doc(db, "rooms", roomId), {
+            status: "playing",
+            board: initBoard(gameType),
+            turn: uid,
+            startedAt: serverTimestamp()
+        });
+    } catch(e) { showToast("Tsy afaka nanomboka: " + e.message, "error"); }
 };
 
+// =========================================================
+//  LEAVE ROOM LOBBY
+// =========================================================
 window.leaveRoomLobby = () => {
-    if (unsubscribeRoomLobby) unsubscribeRoomLobby();
-    document.getElementById("room-lobby-screen").classList.add("hidden");
-    document.getElementById("lobby-screen").classList.remove("hidden");
+    if (unsubscribeRoomLobby) { unsubscribeRoomLobby(); unsubscribeRoomLobby = null; }
     currentRoomId = null;
+    showScreen('lobby-screen');
 };
 
+// =========================================================
+//  JOIN ROOM
+// =========================================================
 window.joinRoom = async (id) => {
     const uid = getUserId();
-    if (!uid) return alert("Tsy tafiditra ianao");
-
-    const roomRef = doc(db, "rooms", id);
-    const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) return;
-    const r = roomSnap.data();
-    if (r.opponent?.id) return alert("Efa feno ity efitra ity");
-
-    await updateDoc(roomRef, {
-        opponent: {
-            id: uid,
-            name: document.getElementById("user-name").innerText,
-            avatar: document.getElementById("user-avatar").src
-        }
-    });
+    if (!uid) { showToast("Tsy tafiditra ianao", "error"); return; }
+    try {
+        const snap = await getDoc(doc(db, "rooms", id));
+        if (!snap.exists()) return;
+        const r = snap.data();
+        if (r.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
+        if (r.status !== "waiting") { showToast("Efa nanomboka ity lalao ity", "error"); return; }
+        if (r.creator?.id === uid) return;
+        const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
+        const myAvatar = document.getElementById("user-avatar")?.src || '';
+        await updateDoc(doc(db, "rooms", id), {
+            opponent: { id: uid, name: escapeHtml(myName), avatar: myAvatar },
+            joinedAt: serverTimestamp()
+        });
+    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
 };
 
+// =========================================================
+//  PLAY WITH AI
+// =========================================================
 window.playWithAI = async (roomId) => {
-    const roomRef = doc(db, "rooms", roomId);
-    const snap = await getDoc(roomRef);
-    const gameType = snap.data().gameType || "fanorontelo";
-    await updateDoc(roomRef, {
-        opponent: {
-            id: 'AI_BOT',
-            name: 'NOLIMITE AI',
-            avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI'
-        },
-        status: "playing",
-        board: initBoard(gameType),
-        turn: getUserId()
-    });
-    playSound('invite');
+    try {
+        const snap = await getDoc(doc(db, "rooms", roomId));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
+        const gameType = data.gameType || "fanorontelo";
+        await updateDoc(doc(db, "rooms", roomId), {
+            opponent: {
+                id: 'AI_BOT',
+                name: 'NOLIMITE AI',
+                avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI',
+                isAI: true
+            },
+            status: "playing",
+            board: initBoard(gameType),
+            turn: getUserId(),
+            startedAt: serverTimestamp()
+        });
+    } catch(e) { showToast("Tsy afaka nampiditra AI: " + e.message, "error"); }
 };
 
-window.openEditModal = () => {
-    document.getElementById("edit-name").value = document.getElementById("user-name").innerText;
-    document.getElementById("edit-avatar").value = document.getElementById("user-avatar").src;
-    document.getElementById("modal-edit-profile").classList.remove("hidden");
-};
-
-window.closeEditModal = () => {
-    document.getElementById("modal-edit-profile").classList.add("hidden");
-};
-
+// =========================================================
+//  ENTER GAME
+// =========================================================
 window.enterGame = async (id) => {
+    if (!id) return;
     unsubscribeAll();
     currentRoomId = id;
-    let gameEnded = false;
-    document.getElementById("lobby-screen").classList.add("hidden");
-    document.getElementById("room-lobby-screen").classList.add("hidden");
-    document.getElementById("game-screen").classList.remove("hidden");
+    selectedCell  = null;
+    lastMovedCellId = null;
+    isAiThinking  = false;
+
+    showScreen('game-screen');
     initChat(id);
 
+    let gameEnded = false;
     const roomRef = doc(db, "rooms", id);
+
     unsubscribeRoom = onSnapshot(roomRef, async (snap) => {
+        if (!snap.exists()) { leaveGame(); return; }
         const game = snap.data();
-        if (!game) return;
+        if (!game) { leaveGame(); return; }
+
         render(game);
 
-        if (turnTimerInterval) clearInterval(turnTimerInterval);
+        // --- Timer ---
+        if (turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
 
         if (game.status === 'playing') {
             const timerEl = document.getElementById("turn-timer");
             if (timerEl) {
                 let timeLeft = 30;
-                timerEl.innerText = `⏱️ ${timeLeft}s`;
+                timerEl.textContent = `⏱️ ${timeLeft}s`;
+                timerEl.className = '';
                 turnTimerInterval = setInterval(async () => {
                     timeLeft--;
-                    timerEl.innerText = `⏱️ ${timeLeft}s`;
+                    if (timerEl) {
+                        timerEl.textContent = `⏱️ ${timeLeft}s`;
+                        timerEl.className = timeLeft <= 10 ? (timeLeft <= 5 ? 'timer-danger' : 'timer-warning') : '';
+                    }
                     if (timeLeft <= 0) {
                         clearInterval(turnTimerInterval);
-                        if (game.turn === getUserId()) {
-                            const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
-                            await updateDoc(roomRef, { turn: nextTurn });
+                        turnTimerInterval = null;
+                        if (game.turn === getUserId() && currentRoomId) {
+                            const nextTurn = game.turn === game.creator?.id
+                                ? game.opponent?.id
+                                : game.creator?.id;
+                            if (nextTurn) {
+                                await updateDoc(roomRef, { turn: nextTurn }).catch(() => {});
+                            }
                         }
                     }
                 }, 1000);
             }
 
+            // AI move
             if (game.turn === 'AI_BOT' && !isAiThinking) {
-                isAiThinking = true;
-                await aiMove(game);
-                isAiThinking = false;
+                aiMove(game);
             }
 
-            const winner = checkWinnerFanorona(game.board, game.creator.id, game.opponent.id, game.gameType);
-            if (winner) {
-                clearInterval(turnTimerInterval);
-                await updateDoc(roomRef, { status: 'finished', winner: winner });
+            // Vérification winner
+            const winner = checkWinnerFanorona(
+                game.board, game.creator?.id, game.opponent?.id, game.gameType
+            );
+            if (winner && !gameEnded) {
+                clearInterval(turnTimerInterval); turnTimerInterval = null;
+                await updateDoc(roomRef, {
+                    status: 'finished', winner, finishedAt: serverTimestamp()
+                }).catch(() => {});
             }
         }
 
+        // Game over
         if (game.status === 'finished' && game.winner && !gameEnded) {
             gameEnded = true;
+            if (turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
 
-            const winnerId = game.winner;
-            const loserId = winnerId === game.creator.id
-                ? game.opponent.id
-                : game.creator.id;
+            const winnerId   = game.winner;
+            const loserId    = winnerId === game.creator?.id ? game.opponent?.id : game.creator?.id;
+            const winnerName = winnerId === game.creator?.id ? game.creator?.name : game.opponent?.name;
+            const loserName  = loserId  === game.creator?.id ? game.creator?.name : game.opponent?.name;
 
-            const winnerName = winnerId === game.creator.id
-                ? game.creator.name
-                : game.opponent.name;
+            // Update leaderboard (seulement humains)
+            if (winnerId !== 'AI_BOT' && loserId && loserId !== 'AI_BOT') {
+                await updateLeaderboard(winnerId, winnerName, loserId, loserName).catch(console.warn);
+            }
 
-            const loserName = loserId === game.creator.id
-                ? game.creator.name
-                : game.opponent.name;
-
-            await updateLeaderboard(winnerId, winnerName, loserId, loserName);
-
+            const msg = `🎉 ${escapeHtml(winnerName||'Iray')} no nandresy! ${randomOhabolana()}`;
             setTimeout(() => {
-                playSound('win');
-                alert(`🎉 ${winnerName} no nandresy!`);
-                leaveGame();
-            }, 500);
+                showToast(msg, 'success', 5000);
+                if (confirm(`🏆 ${winnerName} no nandresy!\nHifandimby indray?`)) {
+                    // Rematch — ovay turn
+                    leaveGame();
+                } else {
+                    leaveGame();
+                }
+            }, 600);
         }
-    });
+    }, err => { showToast("Tapaka ny tambazotra", "error"); leaveGame(); });
 };
 
+// =========================================================
+//  RENDER
+// =========================================================
 function render(game) {
     const grid = document.getElementById("fanorona-grid");
-    grid.innerHTML = "";
+    if (!grid || !game?.board) return;
+
     const gridSize = game.gameType === "fanorontsivy" ? "grid-5x5" : "grid-3x3";
     grid.className = `fanorona-grid ${gridSize}`;
+    grid.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
 
     game.board.forEach(cell => {
         const div = document.createElement("div");
-        div.className = "grid-spot" + (selectedCell?.id === cell.id ? " active-spot" : "");
+        div.className = "grid-spot";
+        div.setAttribute("role", "gridcell");
+        div.setAttribute("tabindex", "0");
+        if (selectedCell?.id === cell.id) div.classList.add("active-spot");
+        if (lastMovedCellId === cell.id)  div.classList.add("last-moved");
 
         if (cell.value) {
             const stone = document.createElement("div");
-            stone.className = `stone ${cell.value === 1 ? 'black-stone' : 'white-stone'} animate-pop`;
+            const isBlack = cell.value === 1;
+            stone.className = `stone ${isBlack ? 'black-stone' : 'white-stone'} animate-pop`;
+            stone.setAttribute("aria-label", `Vato ${isBlack ? 'mainty' : 'fotsy'}`);
             div.appendChild(stone);
+        } else {
+            div.setAttribute("aria-label", "Toerana malalaka");
         }
 
-        div.addEventListener('click', () => {
-            playSound('click');
+        // Utiliser pointerdown pour éviter double-trigger tactile/souris
+        div.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             handleMove(cell, game);
         });
-        div.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            playSound('click');
-            handleMove(cell, game);
+        div.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') handleMove(cell, game);
         });
 
-        grid.appendChild(div);
+        fragment.appendChild(div);
     });
 
+    grid.appendChild(fragment);
+
+    // Turn indicator
     const turnEl = document.getElementById("turn-indicator");
     if (turnEl) {
         const isMyTurn = game.turn === getUserId();
-        turnEl.innerText = isMyTurn ? "Anjaranao!" : "Anjaran'ny mpifanandrina";
-        turnEl.className = isMyTurn ? "my-turn" : "opp-turn";
+        const isAITurn = game.turn === 'AI_BOT';
+        if (isAITurn) {
+            turnEl.textContent = "🤖 AI mihetsika...";
+            turnEl.className = "ai-turn";
+        } else if (isMyTurn) {
+            turnEl.textContent = "✅ Anjaranao!";
+            turnEl.className = "my-turn";
+        } else {
+            turnEl.textContent = "⏳ Anjaran'ny mpifanandrina";
+            turnEl.className = "opp-turn";
+        }
     }
+
+    // Score
+    const countBlack = game.board.filter(c => c.value === 1).length;
+    const countWhite = game.board.filter(c => c.value === 2).length;
+    const cbEl = document.getElementById("count-black");
+    const cwEl = document.getElementById("count-white");
+    const lmEl = document.getElementById("last-move-display");
+    if (cbEl) cbEl.textContent = countBlack;
+    if (cwEl) cwEl.textContent = countWhite;
+    if (lmEl && game.lastMove) lmEl.textContent = game.lastMove;
 }
 
+// =========================================================
+//  HANDLE MOVE
+// =========================================================
 async function handleMove(cell, game) {
+    if (!game || game.status !== 'playing') return;
     const uid = getUserId();
-    if (game.turn !== uid) return;
+    if (!uid || game.turn !== uid) return;
 
-    const myVal = game.creator.id === uid ? 1 : 2;
-    let b = [...game.board];
+    const myVal = game.creator?.id === uid ? 1 : 2;
+    let b = game.board.map(c => ({ ...c })); // copie profonde
 
     if (!selectedCell) {
         if (cell.value === myVal) {
@@ -692,311 +972,471 @@ async function handleMove(cell, game) {
             render(game);
         }
     } else {
-        const dx = Math.abs(cell.x - selectedCell.x);
-        const dy = Math.abs(cell.y - selectedCell.y);
-
-        if (cell.value === 0 && dx <= 1 && dy <= 1) {
-            const captures = getCaptures(b, selectedCell, cell, myVal, game.gameType);
-            b[selectedCell.id].value = 0;
-            b[cell.id].value = myVal;
-
-            if (captures.length > 0) {
-                playSound('capture');
-                captures.forEach(id => {
-                    b[id].value = 0;
-                });
-            }
-
+        if (cell.id === selectedCell.id) {
+            // Déselectionner
             selectedCell = null;
-            await finalizeTurn(b, game);
+            render(game);
+            return;
+        }
+
+        if (cell.value === 0 && isValidMove(selectedCell, cell, game.gameType)) {
+            const captures = getCaptures(b, selectedCell, cell, myVal, game.gameType);
+            const fromId   = selectedCell.id;
+
+            // Notation du dernier mouvement
+            const notation = cellToNotation(selectedCell) + '-' + cellToNotation(cell);
+
+            b = b.map(c => {
+                if (c.id === fromId)             return { ...c, value: 0 };
+                if (c.id === cell.id)            return { ...c, value: myVal };
+                if (captures.includes(c.id))     return { ...c, value: 0 };
+                return c;
+            });
+
+            lastMovedCellId = cell.id;
+            selectedCell = null;
+            await finalizeTurn(b, game, notation);
+        } else if (cell.value === myVal) {
+            selectedCell = cell;
+            render(game);
         } else {
-            selectedCell = (cell.value === myVal) ? cell : null;
+            selectedCell = null;
             render(game);
         }
     }
 }
 
-async function finalizeTurn(b, game) {
-    const winner = checkWinnerFanorona(b, game.creator.id, game.opponent.id, game.gameType);
-    const nextTurn = game.turn === game.creator.id ? game.opponent.id : game.creator.id;
+// =========================================================
+//  FINALIZE TURN
+// =========================================================
+async function finalizeTurn(b, game, notation) {
+    if (!currentRoomId) return;
+    if (!game.opponent?.id) return;
 
-    await updateDoc(doc(db, "rooms", currentRoomId), {
-        board: b,
-        turn: winner ? "end" : nextTurn,
-        winner: winner
-    });
+    const winner   = checkWinnerFanorona(b, game.creator?.id, game.opponent?.id, game.gameType);
+    const nextTurn = game.turn === game.creator?.id ? game.opponent?.id : game.creator?.id;
+
+    try {
+        await updateDoc(doc(db, "rooms", currentRoomId), {
+            board:    b,
+            turn:     winner ? "end" : nextTurn,
+            winner:   winner || null,
+            lastMove: notation || null,
+            updatedAt: serverTimestamp()
+        });
+    } catch(e) {
+        showToast("Hadisoana @ fandefasana paika", "error");
+        console.error("finalizeTurn error:", e);
+    }
 }
 
+// =========================================================
+//  LEAVE GAME
+// =========================================================
 window.leaveGame = async () => {
     unsubscribeAll();
-    if (currentRoomId) {
-        await deleteDoc(doc(db, "rooms", currentRoomId));
+    const rid = currentRoomId;
+    currentRoomId   = null;
+    selectedCell    = null;
+    lastMovedCellId = null;
+    isAiThinking    = false;
+    showScreen('lobby-screen');
+    if (rid) {
+        try { await deleteDoc(doc(db, "rooms", rid)); } catch(e) { /* ignoré */ }
     }
-    currentRoomId = null;
-    selectedCell = null;
-    document.getElementById("game-screen").classList.add("hidden");
-    document.getElementById("lobby-screen").classList.remove("hidden");
 };
 
+// =========================================================
+//  CHAT
+// =========================================================
+const chatRateLimit = { count: 0, resetAt: 0 };
+
 function initChat(roomId) {
-    if (unsubscribeChat) unsubscribeChat();
+    if (!roomId) return;
+    if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
 
     const chatMessages = document.getElementById("chat-messages");
-    const chatInput = document.getElementById("chat-input");
-    const chatSend = document.getElementById("chat-send");
+    const chatInput    = document.getElementById("chat-input");
+    const chatSend     = document.getElementById("chat-send");
+    if (!chatMessages || !chatInput || !chatSend) return;
 
-    chatMessages.innerHTML = "";
+    chatMessages.innerHTML = '';
 
-    const q = query(collection(db, "rooms", roomId, "chat"), orderBy("timestamp", "asc"));
+    const q = query(
+        collection(db, "rooms", roomId, "chat"),
+        orderBy("timestamp", "asc"),
+        limit(100)
+    );
     unsubscribeChat = onSnapshot(q, (snap) => {
-        chatMessages.innerHTML = "";
+        if (!chatMessages) return;
+        chatMessages.innerHTML = '';
+        const frag = document.createDocumentFragment();
         snap.forEach(d => {
             const msg = d.data();
             const isMe = msg.senderId === getUserId();
-            const div = document.createElement("div");
+            const div  = document.createElement("div");
             div.className = isMe ? "chat-me" : "chat-opp";
-            div.innerText = `${msg.senderName}: ${msg.text}`;
-            chatMessages.appendChild(div);
+            div.textContent = `${msg.senderName}: ${msg.text}`;
+            frag.appendChild(div);
         });
+        chatMessages.appendChild(frag);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    });
+    }, err => console.warn("Chat error:", err));
 
-    chatSend.onclick = async () => {
-        const text = chatInput.value.trim();
-        if (!text) return;
-        await addDoc(collection(db, "rooms", roomId, "chat"), {
-            senderId: getUserId(),
-            senderName: document.getElementById("user-name").innerText,
-            text: text,
-            timestamp: serverTimestamp()
+    async function sendMessage() {
+        const text = (chatInput.value || '').trim();
+        if (!text || text.length > 200) return;
+
+        // Rate limit : 5 messages / 10s
+        const now = Date.now();
+        if (now > chatRateLimit.resetAt) {
+            chatRateLimit.count = 0;
+            chatRateLimit.resetAt = now + 10000;
+        }
+        if (chatRateLimit.count >= 5) {
+            showToast("Miadina kely alohan'ny handefa hafatra hafa", "info");
+            return;
+        }
+        chatRateLimit.count++;
+
+        const myName = document.getElementById("user-name")?.textContent || "Mpilalao";
+        chatInput.value = '';
+        try {
+            await addDoc(collection(db, "rooms", roomId, "chat"), {
+                senderId:   getUserId(),
+                senderName: escapeHtml(myName),
+                text:       escapeHtml(text),
+                timestamp:  serverTimestamp()
+            });
+        } catch(e) { showToast("Tsy afaka nandefa hafatra", "error"); }
+    }
+
+    // Enlever les anciens handlers
+    const newSend = chatSend.cloneNode(true);
+    chatSend.parentNode.replaceChild(newSend, chatSend);
+    newSend.addEventListener('click', sendMessage);
+
+    const newInput = chatInput.cloneNode(true);
+    chatInput.parentNode.replaceChild(newInput, chatInput);
+    newInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+    // Quick chat buttons
+    document.querySelectorAll('.qc-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const msg = btn.dataset.msg;
+            if (!msg) return;
+            const myName = document.getElementById("user-name")?.textContent || "Mpilalao";
+            try {
+                await addDoc(collection(db, "rooms", roomId, "chat"), {
+                    senderId: getUserId(),
+                    senderName: escapeHtml(myName),
+                    text: msg,
+                    timestamp: serverTimestamp()
+                });
+            } catch(e) { /* ignoré */ }
         });
-        chatInput.value = "";
-    };
-
-    chatInput.onkeypress = (e) => {
-        if (e.key === "Enter") chatSend.click();
-    };
+    });
 }
 
+// =========================================================
+//  LEADERBOARD (Supabase)
+// =========================================================
 async function updateLeaderboard(winnerId, winnerName, loserId, loserName) {
-    const { data: winData } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("player_id", winnerId)
-        .single();
-
-    if (winData) {
-        await supabase
-            .from("leaderboard")
-            .update({ wins: winData.wins + 1 })
-            .eq("player_id", winnerId);
-    } else {
-        await supabase.from("leaderboard").insert([{
-            player_id: winnerId,
-            player_name: winnerName,
-            wins: 1,
-            losses: 0
-        }]);
-    }
-
-    const { data: loseData } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("player_id", loserId)
-        .single();
-
-    if (loseData) {
-        await supabase
-            .from("leaderboard")
-            .update({ losses: loseData.losses + 1 })
-            .eq("player_id", loserId);
-    } else {
-        await supabase.from("leaderboard").insert([{
-            player_id: loserId,
-            player_name: loserName,
-            wins: 0,
-            losses: 1
-        }]);
-    }
+    if (!winnerId || !loserId || winnerId === loserId) return;
+    try {
+        const [{ data: winData }, { data: loseData }] = await Promise.all([
+            supabase.from("leaderboard").select("*").eq("player_id", winnerId).maybeSingle(),
+            supabase.from("leaderboard").select("*").eq("player_id", loserId).maybeSingle()
+        ]);
+        await Promise.all([
+            winData
+                ? supabase.from("leaderboard").update({ wins: (winData.wins||0) + 1 }).eq("player_id", winnerId)
+                : supabase.from("leaderboard").insert([{ player_id: winnerId, player_name: escapeHtml(winnerName||''), wins: 1, losses: 0 }]),
+            loseData
+                ? supabase.from("leaderboard").update({ losses: (loseData.losses||0) + 1 }).eq("player_id", loserId)
+                : supabase.from("leaderboard").insert([{ player_id: loserId, player_name: escapeHtml(loserName||''), wins: 0, losses: 1 }])
+        ]);
+    } catch(e) { console.warn("Leaderboard error:", e); }
 }
 
 async function loadLeaderboard() {
-    const { data } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .order("wins", { ascending: false })
-        .limit(10);
-
     const container = document.getElementById("leaderboard");
     if (!container) return;
-    
-    container.innerHTML = "<h3>🏆 Leaderboard</h3>";
-    data?.forEach((player, index) => {
-        container.innerHTML += `
-            <div class="leaderboard-row">
-                ${index + 1}. ${player.player_name} - 
-                🟢 ${player.wins} | 🔴 ${player.losses}
-            </div>
-        `;
-    });
+    try {
+        const { data, error } = await supabase
+            .from("leaderboard")
+            .select("*")
+            .order("wins", { ascending: false })
+            .limit(10);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Tsy mbola misy ato ny laharana</p></div>';
+            return;
+        }
+        const frag = document.createDocumentFragment();
+        data.forEach((p, i) => {
+            const div = document.createElement("div");
+            div.className = "leaderboard-row";
+            div.setAttribute("role","listitem");
+            const medals = ['🥇','🥈','🥉'];
+            div.innerHTML = `
+                <span class="leaderboard-rank">${medals[i] || (i+1)+'.'}</span>
+                <span class="leaderboard-name">${escapeHtml(p.player_name||'')}</span>
+                <span class="leaderboard-stats">🟢${p.wins||0} 🔴${p.losses||0}</span>`;
+            frag.appendChild(div);
+        });
+        container.innerHTML = '';
+        container.appendChild(frag);
+    } catch(e) {
+        container.innerHTML = '<div class="empty-state"><p>Tsy afaka nitondra ny laharana</p></div>';
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const btnGoogle = document.getElementById("btn-google");
-    if (btnGoogle) btnGoogle.onclick = () => signInWithPopup(auth, provider);
+// =========================================================
+//  PROFILE MODAL
+// =========================================================
+window.openEditModal = () => {
+    const modal    = document.getElementById("modal-edit-profile");
+    const nameEl   = document.getElementById("edit-name");
+    const avatarEl = document.getElementById("edit-avatar");
+    if (!modal) return;
+    if (nameEl)   nameEl.value   = document.getElementById("user-name")?.textContent || '';
+    if (avatarEl) avatarEl.value = document.getElementById("user-avatar")?.src || '';
+    modal.classList.remove("hidden");
+};
+window.closeEditModal = () => {
+    document.getElementById("modal-edit-profile")?.classList.add("hidden");
+};
 
+// Preview avatar
+document.addEventListener('DOMContentLoaded', () => {
+    const avatarInput = document.getElementById("edit-avatar");
+    const preview = document.getElementById("avatar-preview");
+    if (avatarInput && preview) {
+        avatarInput.addEventListener('input', () => {
+            const url = avatarInput.value.trim();
+            if (url.startsWith('http')) {
+                preview.src = url;
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+    }
+
+    // ===== BTN GOOGLE =====
+    const btnGoogle = document.getElementById("btn-google");
+    if (btnGoogle) {
+        btnGoogle.addEventListener('click', async () => {
+            btnGoogle.disabled = true;
+            btnGoogle.textContent = "Miandry...";
+            try {
+                await signInWithPopup(auth, provider);
+            } catch(e) {
+                showToast("Tsy afaka niditra amin'ny Google: " + e.message, "error");
+                btnGoogle.disabled = false;
+                btnGoogle.innerHTML = '<i class="fab fa-google"></i> Midira amin\'ny Google';
+            }
+        });
+    }
+
+    // ===== BTN GUEST =====
     const btnGuest = document.getElementById("btn-guest");
     if (btnGuest) {
-        btnGuest.onclick = async () => {
-            let guestUid = localStorage.getItem("nolimite_guest_uid");
-            let guestName = localStorage.getItem("nolimite_guest_name") || "Mpanandrana_" + Math.floor(Math.random() * 1000);
-            let guestAvatar = "https://api.dicebear.com/7.x/bottts/svg?seed=" + guestName;
-
-            if (!guestUid) {
-                guestUid = "GUEST_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-                localStorage.setItem("nolimite_guest_uid", guestUid);
-                localStorage.setItem("nolimite_guest_name", guestName);
-            }
-
-           myCurrentUid = guestUid;
-            const guestData = {
-                uid: guestUid,
-                name: guestName,
-                avatar: guestAvatar,
-                status: "online",
-                isGuest: true,
-                lastSeen: serverTimestamp()
-            };
-
-            await setDoc(doc(db, "users", guestUid), guestData, { merge: true });
-            setupGuestUI(guestData);
-        };
-    }
-
-    const btnCreateRoom = document.getElementById("btn-create-room");
-    if (btnCreateRoom) btnCreateRoom.onclick = () => document.getElementById("modal-create").classList.remove("hidden");
-
-    const roomType = document.getElementById("room-type");
-    if (roomType) {
-        roomType.onchange = function () {
-            document.getElementById("room-password").style.display = this.value === "private" ? "block" : "none";
-        };
-    }
-
-    const btnQuickPlay = document.getElementById("btn-quick-play");
-    if (btnQuickPlay) {
-        btnQuickPlay.onclick = async () => {
-            const uid = getUserId();
-            if (!uid) return;
-
-            const q = query(collection(db, "rooms"), where("status", "==", "waiting"), limit(10));
-            const snap = await getDocs(q);
-            let foundRoom = null;
-
-            snap.forEach(d => {
-                const r = d.data();
-                if (r.creator.id !== uid && r.type !== "private") {
-                    foundRoom = d.id;
+        btnGuest.addEventListener('click', async () => {
+            btnGuest.disabled = true;
+            try {
+                let guestUid  = localStorage.getItem("nolimite_guest_uid");
+                let guestName = localStorage.getItem("nolimite_guest_name");
+                if (!guestUid) {
+                    guestUid  = "GUEST_" + crypto.randomUUID().replace(/-/g,'').substr(0,12);
+                    guestName = guestName || ("Mpanandrana_" + Math.floor(Math.random() * 9000 + 1000));
+                    localStorage.setItem("nolimite_guest_uid",  guestUid);
+                    localStorage.setItem("nolimite_guest_name", guestName);
+                } else {
+                    guestName = guestName || ("Mpanandrana_" + Math.floor(Math.random() * 9000 + 1000));
                 }
-            });
-            if (foundRoom) {
-                viewRoom(foundRoom);
-            } else {
-                const autoId = "QUICK_" + Math.floor(Math.random() * 10000);
-                await setDoc(doc(db, "rooms", autoId), {
+                const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${guestUid}`;
+                myCurrentUid = guestUid;
+                await setDoc(doc(db, "users", guestUid), {
+                    uid: guestUid, name: guestName, avatar,
+                    status: "online", isGuest: true,
+                    lastSeen: serverTimestamp(), createdAt: serverTimestamp()
+                }, { merge: true });
+                setupGuestUI({ uid: guestUid, name: guestName, avatar });
+            } catch(e) {
+                showToast("Tsy afaka niditra: " + e.message, "error");
+                btnGuest.disabled = false;
+            }
+        });
+    }
+
+    // ===== BTN CREATE ROOM =====
+    const btnCreate = document.getElementById("btn-create-room");
+    if (btnCreate) {
+        btnCreate.addEventListener('click', () => {
+            const modal = document.getElementById("modal-create");
+            if (modal) modal.classList.remove("hidden");
+        });
+    }
+
+    // ===== ROOM TYPE CHANGE =====
+    const roomType = document.getElementById("room-type");
+    const pwGroup  = document.getElementById("password-group");
+    if (roomType && pwGroup) {
+        roomType.addEventListener('change', () => {
+            pwGroup.style.display = roomType.value === "private" ? "block" : "none";
+        });
+    }
+
+    // ===== QUICK PLAY =====
+    const btnQuick = document.getElementById("btn-quick-play");
+    if (btnQuick) {
+        btnQuick.addEventListener('click', async () => {
+            const uid = getUserId();
+            if (!uid) { showToast("Miditra aloha!", "error"); return; }
+            btnQuick.disabled = true;
+            try {
+                const q    = query(collection(db, "rooms"),
+                    where("status","==","waiting"),
+                    where("type","==","public"),
+                    limit(10));
+                const snap = await getDocs(q);
+                let found  = null;
+                snap.forEach(d => {
+                    if (!found && d.data().creator?.id !== uid) found = d.id;
+                });
+                if (found) {
+                    viewRoom(found);
+                } else {
+                    const autoId = "Q" + (crypto.randomUUID().replace(/-/g,'').substr(0,8)).toUpperCase();
+                    await setDoc(doc(db, "rooms", autoId), {
+                        creator: {
+                            id: uid,
+                            name: escapeHtml(document.getElementById("user-name")?.textContent||""),
+                            avatar: document.getElementById("user-avatar")?.src||""
+                        },
+                        status: "waiting", type: "public",
+                        gameType: "fanorontelo",
+                        createdAt: serverTimestamp()
+                    });
+                    autoDeleteRoom(autoId);
+                    viewRoom(autoId);
+                }
+            } catch(e) { showToast("Hadisoana: " + e.message, "error"); }
+            finally { btnQuick.disabled = false; }
+        });
+    }
+
+    // ===== CONFIRM CREATE ROOM =====
+    const btnConfirm = document.getElementById("btn-confirm-create");
+    if (btnConfirm) {
+        btnConfirm.addEventListener('click', async () => {
+            const uid = getUserId();
+            if (!uid) { showToast("Miditra aloha!", "error"); return; }
+            btnConfirm.disabled = true;
+            try {
+                const rawName  = document.getElementById("room-uid-input")?.value || '';
+                const name     = slugify(rawName) || "KIANJA_" + Math.floor(Math.random()*9000+1000);
+                const type     = document.getElementById("room-type")?.value || "public";
+                const pass     = document.getElementById("room-password")?.value || '';
+                const gameType = document.getElementById("game-type")?.value || "fanorontelo";
+
+                const existSnap = await getDoc(doc(db, "rooms", name));
+                if (existSnap.exists()) { showToast("Efa misy kianja mitovy anarana", "error"); btnConfirm.disabled = false; return; }
+
+                await setDoc(doc(db, "rooms", name), {
                     creator: {
                         id: uid,
-                        name: document.getElementById("user-name").innerText,
-                        avatar: document.getElementById("user-avatar").src
+                        name: escapeHtml(document.getElementById("user-name")?.textContent||""),
+                        avatar: document.getElementById("user-avatar")?.src||""
                     },
-                    status: "waiting",
-                    type: "public",
-                    gameType: "fanorontelo",
+                    status: "waiting", type,
+                    gameType,
+                    password: type === "private" ? pass : "",
                     createdAt: serverTimestamp()
                 });
-                autoDeleteRoom(autoId);
-                viewRoom(autoId);
-            }
-        };
+
+                // Reset form
+                if (document.getElementById("room-uid-input"))   document.getElementById("room-uid-input").value   = '';
+                if (document.getElementById("room-password"))     document.getElementById("room-password").value   = '';
+                if (document.getElementById("room-type"))         document.getElementById("room-type").value        = 'public';
+                if (document.getElementById("password-group"))    document.getElementById("password-group").style.display = 'none';
+
+                document.getElementById("modal-create")?.classList.add("hidden");
+                autoDeleteRoom(name);
+                viewRoom(name);
+            } catch(e) { showToast("Tsy afaka namorona kianja: " + e.message, "error"); }
+            finally { btnConfirm.disabled = false; }
+        });
     }
 
-    const btnConfirmCreate = document.getElementById("btn-confirm-create");
-    if (btnConfirmCreate) {
-        btnConfirmCreate.onclick = async () => {
+    // ===== SAVE PROFILE =====
+    const btnSave = document.getElementById("btn-save-profile");
+    if (btnSave) {
+        btnSave.addEventListener('click', async () => {
             const uid = getUserId();
             if (!uid) return;
-
-            const name = document.getElementById("room-uid-input").value || "ROOM_" + Math.floor(Math.random() * 10000);
-            const type = document.getElementById("room-type").value;
-            const pass = document.getElementById("room-password").value;
-            const gameType = document.getElementById("game-type").value;
-
-            await setDoc(doc(db, "rooms", name), {
-                creator: {
-                    id: uid,
-                    name: document.getElementById("user-name").innerText,
-                    avatar: document.getElementById("user-avatar").src
-                },
-                status: "waiting",
-                type: type,
-                gameType: gameType,
-                password: pass,
-                createdAt: serverTimestamp()
-            });
-
-            autoDeleteRoom(name);
-            document.getElementById("modal-create").classList.add("hidden");
-            viewRoom(name);
-        };
+            btnSave.disabled = true;
+            try {
+                let newName   = (document.getElementById("edit-name")?.value || '').trim();
+                const newAvatar = (document.getElementById("edit-avatar")?.value || '').trim();
+                if (!newName || newName.length > 8) {
+                    showToast("Anarana 1 hatramin'ny 8 litera", "error");
+                    return;
+                }
+                // Valider URL avatar
+                if (newAvatar && !newAvatar.startsWith('http')) {
+                    showToast("URL avatar tsy marina", "error");
+                    return;
+                }
+                const finalAvatar = newAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
+                await updateDoc(doc(db, "users", uid), {
+                    name: newName, avatar: finalAvatar
+                });
+                const nameEl   = document.getElementById("user-name");
+                const avatarEl = document.getElementById("user-avatar");
+                if (nameEl)   nameEl.textContent = newName;
+                if (avatarEl) avatarEl.src = finalAvatar;
+                closeEditModal();
+                showToast("Voatahiry ny mombamomba! ✅", "success");
+            } catch(e) { showToast("Tsy afaka nahitsy: " + e.message, "error"); }
+            finally { btnSave.disabled = false; }
+        });
     }
 
-    const btnSaveProfile = document.getElementById("btn-save-profile");
-    if (btnSaveProfile) {
-        btnSaveProfile.onclick = async () => {
-            const uid = getUserId();
-            if (!uid) return;
-            let newName = document.getElementById("edit-name").value.trim();
-            const newAvatar = document.getElementById("edit-avatar").value.trim();
-
-            if (newName.length === 0 || newName.length > 8) {
-                alert("Anarana 1 hatramin'ny 8 litera ihany azafady!");
-                return;
-            }
-
-            await updateDoc(doc(db, "users", uid), {
-                name: newName,
-                avatar: newAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + uid
-            });
-            document.getElementById("user-name").innerText = newName;
-            document.getElementById("user-avatar").src = newAvatar;
-            closeEditModal();
-        };
-    }
-
+    // ===== LOGOUT =====
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
-        btnLogout.onclick = async () => {
-            if (confirm("Hivoaka ve ianao?")) {
-                unsubscribeAll();
-                const uid = getUserId();
-                if (uid) {
-                    await updateDoc(doc(db, "users", uid), { status: "offline" });
-                }
-                await auth.signOut();
-                localStorage.removeItem("nolimite_guest_uid");
-                localStorage.removeItem("nolimite_guest_name");
-                location.reload();
-            }
-        };
+        btnLogout.addEventListener('click', async () => {
+            if (!confirm("Hivoaka ve ianao?")) return;
+            btnLogout.disabled = true;
+            unsubscribeAll();
+            const uid = getUserId();
+            teardownPresence(uid);
+            myCurrentUid = null;
+            try { await auth.signOut(); } catch(e) { /* ignoré */ }
+            localStorage.removeItem("nolimite_guest_uid");
+            localStorage.removeItem("nolimite_guest_name");
+            showScreen('login-screen');
+        });
     }
 
-    loadLeaderboard();
-});
-
-document.addEventListener('click', (e) => {
-    if (e.target.matches('#game-screen .btn-exit')) {
-        if (confirm("Hiala amin'ny lalao ve ianao?")) {
-            leaveGame();
+    // ===== GAME SCREEN EXIT BUTTON (event delegation) =====
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="leave-game"]')) {
+            if (confirm("Hiala amin'ny lalao ve ianao?")) leaveGame();
         }
-    }
+    });
+
+    // ===== BEFORE UNLOAD =====
+    window.addEventListener('beforeunload', () => {
+        const uid = getUserId();
+        if (uid) {
+            updateDoc(doc(db, "users", uid), { status: "offline" }).catch(() => {});
+        }
+    });
+
+    setupSearch();
+    loadLeaderboard();
 });
