@@ -1388,38 +1388,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== SAVE PROFILE =====
     const btnSave = document.getElementById("btn-save-profile");
-    if (btnSave) {
-        btnSave.addEventListener('click', async () => {
-            const uid = getUserId();
-            if (!uid) return;
-            btnSave.disabled = true;
-            try {
-                let newName   = (document.getElementById("edit-name")?.value || '').trim();
-                const newAvatar = (document.getElementById("edit-avatar")?.value || '').trim();
-                if (!newName || newName.length > 8) {
-                    showToast("Anarana 1 hatramin'ny 8 litera", "error");
-                    return;
+if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+        const uid = getUserId();
+        if (!uid) {
+            showToast("Tsy tafiditra ianao", "error");
+            return;
+        }
+        btnSave.disabled = true;
+        try {
+            let newName = (document.getElementById("edit-name")?.value || '').trim();
+            const newAvatar = (document.getElementById("edit-avatar")?.value || '').trim();
+            
+            if (!newName || newName.length > 8) {
+                showToast("Anarana 1 hatramin'ny 8 litera", "error");
+                return;
+            }
+            if (newAvatar && !newAvatar.startsWith('http')) {
+                showToast("URL avatar tsy marina", "error");
+                return;
+            }
+            
+            const finalAvatar = newAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
+            
+            // 1. Update users collection
+            await setDoc(doc(db, "users", uid), {
+                uid: uid,
+                name: newName, 
+                avatar: finalAvatar,
+                status: "online",
+                lastSeen: serverTimestamp()
+            }, { merge: true });
+            
+            // 2. Update anarana ao amin'ny room raha efa anaty lalao
+            if (currentRoomId) {
+                const roomRef = doc(db, "rooms", currentRoomId);
+                const roomSnap = await getDoc(roomRef);
+                if (roomSnap.exists()) {
+                    const roomData = roomSnap.data();
+                    if (roomData.creator?.id === uid) {
+                        await updateDoc(roomRef, {
+                            "creator.name": newName,
+                            "creator.avatar": finalAvatar
+                        });
+                    } else if (roomData.opponent?.id === uid) {
+                        await updateDoc(roomRef, {
+                            "opponent.name": newName,
+                            "opponent.avatar": finalAvatar
+                        });
+                    }
                 }
-                // Valider URL avatar
-                if (newAvatar && !newAvatar.startsWith('http')) {
-                    showToast("URL avatar tsy marina", "error");
-                    return;
-                }
-                const finalAvatar = newAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
-                await updateDoc(doc(db, "users", uid), {
-                    name: newName, avatar: finalAvatar
-                });
-                const nameEl   = document.getElementById("user-name");
-                const avatarEl = document.getElementById("user-avatar");
-                if (nameEl)   nameEl.textContent = newName;
-                if (avatarEl) avatarEl.src = finalAvatar;
-                closeEditModal();
-                showToast("Voatahiry ny mombamomba! ✅", "success");
-            } catch(e) { showToast("Tsy afaka nahitsy: " + e.message, "error"); }
-            finally { btnSave.disabled = false; }
-        });
-    }
-
+            }
+            
+            // 3. Update UI
+            const nameEl = document.getElementById("user-name");
+            const avatarEl = document.getElementById("user-avatar");
+            if (nameEl) nameEl.textContent = newName;
+            if (avatarEl) avatarEl.src = finalAvatar;
+            
+            closeEditModal();
+            showToast("Voatahiry ny mombamomba! ✅", "success");
+        } catch(e) { 
+            console.error("Erreur save profile:", e); 
+            showToast("Tsy afaka nahitsy: " + e.code, "error"); 
+        }
+        finally { btnSave.disabled = false; }
+    });
+}
     // ===== LOGOUT =====
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
