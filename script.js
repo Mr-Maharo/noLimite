@@ -45,12 +45,11 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// AppCheck tsy maintsy aorian'ny app
+
 const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6Ld6BCAtAAAAAANU9s1hepNcHwCM0_RfbPVQxVML'),
   isTokenAutoRefreshEnabled: true
 });
-
 // =========================================================
 //  ÉTAT GLOBAL
 // =========================================================
