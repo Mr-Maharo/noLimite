@@ -1,38 +1,18 @@
 // =========================================================
-//  NOLIMITE FANORONA — script.js  v3.0
+//  NOLIMITE FANORONA — script.js  v3.1
 //  Voa-katsaka, voa-hasina, manara-penitra
 // =========================================================
 
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-
-const auth = getAuth();
-let myId = null;
-let myName = null;
-
-// Auto login guest raha tsy misy user
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        myId = user.uid;
-        myName = user.displayName || "Guest" + user.uid.substring(0,4);
-        console.log("Auth OK:", myId);
-        initLobby(); // Antsoy eto ny function mamaky rooms
-        initPlayerList();
-    } else {
-        signInAnonymously(auth).catch(err => console.error("Auth error:", err));
-    }
-});
-
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
-
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('le-reCAPTCHA-key-nao'),
-  isTokenAutoRefreshEnabled: true
-});
-
+// 1. IMPORTS REHETRA - INDRINDRA IRAY IHANY
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import {
-    getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    signInAnonymously,
+    signInWithPopup, 
+    GoogleAuthProvider
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
 import {
     getFirestore, collection, doc, setDoc, updateDoc,
     onSnapshot, serverTimestamp, addDoc, query,
@@ -41,13 +21,13 @@ import {
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 // =========================================================
-//  CONFIG — ny key Firebase sy Supabase dia avy @ mpampiasa
-//  (tsy voaaro @ production; ampio .env raha server-side)
+//  CONFIG
 // =========================================================
 const supabase = createClient(
     "https://ajkqodiuhqzibxqjoxpl.supabase.co",
     "sb_publishable_lTjKv2nsYdzUdSw9NvoyAg_UPgBezlo"
 );
+
 const firebaseConfig = {
   apiKey: "AIzaSyCW5xkhQQFI9YZhsjVUU05RXwE7JNjMc4w",
   authDomain: "fanorona-mg-88384.firebaseapp.com",
@@ -58,10 +38,18 @@ const firebaseConfig = {
   appId: "1:659804025087:web:b2a380c0544998785f9cca",
   measurementId: "G-F93X9LWS32"
 };
+
+// 2. INIT FIREBASE - FILAHARANA MARINA
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 const provider = new GoogleAuthProvider();
+
+// AppCheck tsy maintsy aorian'ny app
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('le-reCAPTCHA-key-nao'),
+  isTokenAutoRefreshEnabled: true
+});
 
 // =========================================================
 //  ÉTAT GLOBAL
