@@ -47,7 +47,7 @@ const provider = new GoogleAuthProvider();
 
 // AppCheck tsy maintsy aorian'ny app
 const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('le-reCAPTCHA-key-nao'),
+  provider: new ReCaptchaV3Provider('6Ld6BCAtAAAAAANU9s1hepNcHwCM0_RfbPVQxVML'),
   isTokenAutoRefreshEnabled: true
 });
 
