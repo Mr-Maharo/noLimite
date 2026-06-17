@@ -1,9 +1,6 @@
-// =========================================================
-//  NOLIMITE FANORONA — script.js  v3.1
-//  Voa-katsaka, voa-hasina, manara-penitra
-// =========================================================
 
-// 1. IMPORTS REHETRA - INDRINDRA IRAY IHANY
+
+// 1. IMPORTS REHETRA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { 
     getAuth, 
@@ -39,17 +36,16 @@ const firebaseConfig = {
   measurementId: "G-F93X9LWS32"
 };
 
-// 2. INIT FIREBASE - FILAHARANA MARINA
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-
 const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6Ld6BCAtAAAAAANU9s1hepNcHwCM0_RfbPVQxVML'),
   isTokenAutoRefreshEnabled: true
 });
+
 // =========================================================
 //  ÉTAT GLOBAL
 // =========================================================
@@ -153,13 +149,11 @@ function initBoard(gameType) {
                 let value = 0;
                 if (y < 2) value = 1;
                 else if (y > 2) value = 2;
-                // rangée du milieu (y=2) : vide
                 cells.push({ id: id++, x, y, value });
             }
         }
         return cells;
     }
-    // Fanorontelo 3x3
     return [
         { id:0, x:0, y:0, value:1 }, { id:1, x:1, y:0, value:1 }, { id:2, x:2, y:0, value:1 },
         { id:3, x:0, y:1, value:0 }, { id:4, x:1, y:1, value:0 }, { id:5, x:2, y:1, value:0 },
@@ -175,10 +169,8 @@ function isValidMove(from, to, gameType) {
     const dy = Math.abs(to.y - from.y);
     if (dx > 1 || dy > 1) return false;
     if (dx === 0 && dy === 0) return false;
-    // Fanorontelo 3x3 : diagonale @ afovoany ihany
     if (gameType === "fanorontelo") {
         if (dx === 1 && dy === 1) {
-            // Diagonale autorisée uniquement si from ou to est le centre (1,1)
             return (from.x === 1 && from.y === 1) || (to.x === 1 && to.y === 1);
         }
     }
@@ -194,7 +186,6 @@ function getCaptures(board, fromCell, toCell, myVal, gameType) {
     const dx = toCell.x - fromCell.x;
     const dy = toCell.y - fromCell.y;
 
-    // Direction avant (approche)
     let nx = toCell.x + dx;
     let ny = toCell.y + dy;
     while (nx >= 0 && nx <= (gameType==="fanorontsivy"?4:2) &&
@@ -205,7 +196,6 @@ function getCaptures(board, fromCell, toCell, myVal, gameType) {
         nx += dx; ny += dy;
     }
 
-    // Direction arrière (retrait)
     nx = fromCell.x - dx;
     ny = fromCell.y - dy;
     while (nx >= 0 && nx <= (gameType==="fanorontsivy"?4:2) &&
@@ -245,81 +235,11 @@ function checkWinnerFanorona(board, creatorId, opponentId, gameType) {
 }
 
 // =========================================================
-//  COORDONNÉES → notation algébrique (A1, B2…)
+//  COORDONNÉES → notation algébrique
 // =========================================================
 function cellToNotation(cell) {
     const cols = ['A','B','C','D','E'];
     return cols[cell.x] + (cell.y + 1);
-}
-
-// =========================================================
-//  AI
-// =========================================================
-async function aiMove(game) {
-    if (!game || game.turn !== 'AI_BOT' || game.status !== 'playing') return;
-    if (!currentRoomId) return;
-    if (isAiThinking) return;
-    isAiThinking = true;
-
-    try {
-        await new Promise(r => setTimeout(r, 1000 + Math.random() * 600));
-        if (!currentRoomId) { isAiThinking = false; return; }
-
-        const board = game.board;
-        if (!Array.isArray(board)) { isAiThinking = false; return; }
-
-        const aiStones    = board.filter(c => c.value === 2);
-        const emptyCells  = board.filter(c => c.value === 0);
-        if (aiStones.length === 0 || emptyCells.length === 0) { isAiThinking = false; return; }
-
-        let bestMove = null;
-        let maxCaptures = -1;
-
-        for (const stone of aiStones) {
-            for (const empty of emptyCells) {
-                if (!isValidMove(stone, empty, game.gameType)) continue;
-                const caps = getCaptures(board, stone, empty, 2, game.gameType);
-                if (caps.length > maxCaptures) {
-                    maxCaptures = caps.length;
-                    bestMove = { from: stone, to: empty, captures: caps };
-                }
-            }
-        }
-
-        // Fallback : mouvement aléatoire
-        if (!bestMove || maxCaptures === 0) {
-            const moves = [];
-            for (const stone of aiStones) {
-                for (const empty of emptyCells) {
-                    if (isValidMove(stone, empty, game.gameType)) {
-                        moves.push({ from: stone, to: empty, captures: [] });
-                    }
-                }
-            }
-            if (moves.length > 0) {
-                bestMove = moves[Math.floor(Math.random() * moves.length)];
-            }
-        }
-
-        if (!bestMove) { isAiThinking = false; return; }
-
-        let newBoard = board.map(cell => {
-            if (cell.id === bestMove.from.id) return { ...cell, value: 0 };
-            if (cell.id === bestMove.to.id)   return { ...cell, value: 2 };
-            if (bestMove.captures.includes(cell.id)) return { ...cell, value: 0 };
-            return cell;
-        });
-
-        await updateDoc(doc(db, "rooms", currentRoomId), {
-            board: newBoard,
-            turn: game.creator.id,
-            lastMove: cellToNotation(bestMove.from) + '-' + cellToNotation(bestMove.to)
-        });
-    } catch (err) {
-        console.error("AI error:", err);
-    } finally {
-        isAiThinking = false;
-    }
 }
 
 // =========================================================
@@ -339,7 +259,8 @@ onAuthStateChanged(auth, async (user) => {
         }
         await setDoc(userRef, {
             uid: user.uid, name: finalName, avatar: finalAvatar,
-            status: "online", lastSeen: serverTimestamp()
+            status: "online", lastSeen: serverTimestamp(),
+            createdAt: userSnap?.exists() ? userSnap.data().createdAt : serverTimestamp()
         }, { merge: true }).catch(() => {});
         setupGuestUI({ uid: user.uid, name: finalName, avatar: finalAvatar });
     } else {
@@ -392,7 +313,7 @@ function autoDeleteRoom(roomId) {
 }
 
 // =========================================================
-//  DELETE ROOM (window-exposed)
+//  DELETE ROOM
 // =========================================================
 window.deleteRoom = async (roomId) => {
     if (!confirm("Tena fafana ity kianja ity?")) return;
@@ -467,33 +388,12 @@ function showInviteUI(inviteId, invite) {
     setTimeout(() => box.remove(), 30000);
 }
 
-window.acceptInvite = async (inviteId, senderUid, senderName) => {
-    const uid = getUserId();
-    if (!uid) return;
-    document.getElementById("invite-" + inviteId)?.remove();
-    const roomId = "INV" + (Math.random().toString(36).substr(2,6)).toUpperCase();
-    const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
-    const myAvatar = document.getElementById("user-avatar")?.src || '';
-    try {
-        await setDoc(doc(db, "rooms", roomId), {
-            creator:  { id: senderUid, name: escapeHtml(senderName), avatar: "" },
-            opponent: { id: uid, name: escapeHtml(myName), avatar: myAvatar },
-            status: "playing", gameType: "fanorontelo",
-            board: initBoard("fanorontelo"),
-            turn: senderUid, createdAt: serverTimestamp()
-        });
-        await updateDoc(doc(db, "invites", inviteId), {
-            status: "accepted", respondedAt: serverTimestamp()
-        });
-        enterGame(roomId);
-    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
-};
-
 window.rejectInvite = async (inviteId) => {
     document.getElementById("invite-" + inviteId)?.remove();
     try {
         await updateDoc(doc(db, "invites", inviteId), {
-            status: "rejected", respondedAt: serverTimestamp()
+            status: "rejected",
+            respondedAt: serverTimestamp()
         });
     } catch(e) { /* ignoré */ }
 };
@@ -547,7 +447,7 @@ function initPlayerList() {
 }
 
 // =========================================================
-//  LOBBY (rooms list)
+//  LOBBY
 // =========================================================
 function initLobby() {
     if (unsubscribeRooms) { unsubscribeRooms(); unsubscribeRooms = null; }
@@ -606,7 +506,7 @@ function initLobby() {
 }
 
 // =========================================================
-//  SEARCH (debounced)
+//  SEARCH
 // =========================================================
 function debounce(fn, ms) {
     let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -635,7 +535,7 @@ function setupSearch() {
 }
 
 // =========================================================
-//  VIEW ROOM (enter lobby before game starts)
+//  VIEW ROOM
 // =========================================================
 window.viewRoom = async (id) => {
     if (!id || typeof id !== 'string') return;
@@ -647,7 +547,7 @@ window.viewRoom = async (id) => {
 
         if (r.type === "private" && r.creator?.id !== getUserId()) {
             const entered = prompt("Teny miafina:");
-            if (entered === null) return; // user cancelled
+            if (entered === null) return;
             if (entered !== r.password) { showToast("Teny miafina diso!", "error"); return; }
         }
 
@@ -720,81 +620,12 @@ function renderRoomLobby(room, roomId) {
 }
 
 // =========================================================
-//  START GAME
-// =========================================================
-window.startGame = async (roomId) => {
-    const uid = getUserId();
-    if (!uid) return;
-    try {
-        const snap = await getDoc(doc(db, "rooms", roomId));
-        if (!snap.exists()) return;
-        const data = snap.data();
-        if (data.status === 'playing') return; // déjà démarré
-        if (!data.opponent?.id) { showToast("Miandry mpifanandrina aloha", "info"); return; }
-        const gameType = data.gameType || "fanorontelo";
-        await updateDoc(doc(db, "rooms", roomId), {
-            status: "playing",
-            board: initBoard(gameType),
-            turn: uid,
-            startedAt: serverTimestamp()
-        });
-    } catch(e) { showToast("Tsy afaka nanomboka: " + e.message, "error"); }
-};
-
-// =========================================================
 //  LEAVE ROOM LOBBY
 // =========================================================
 window.leaveRoomLobby = () => {
     if (unsubscribeRoomLobby) { unsubscribeRoomLobby(); unsubscribeRoomLobby = null; }
     currentRoomId = null;
     showScreen('lobby-screen');
-};
-
-// =========================================================
-//  JOIN ROOM
-// =========================================================
-window.joinRoom = async (id) => {
-    const uid = getUserId();
-    if (!uid) { showToast("Tsy tafiditra ianao", "error"); return; }
-    try {
-        const snap = await getDoc(doc(db, "rooms", id));
-        if (!snap.exists()) return;
-        const r = snap.data();
-        if (r.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
-        if (r.status !== "waiting") { showToast("Efa nanomboka ity lalao ity", "error"); return; }
-        if (r.creator?.id === uid) return;
-        const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
-        const myAvatar = document.getElementById("user-avatar")?.src || '';
-        await updateDoc(doc(db, "rooms", id), {
-            opponent: { id: uid, name: escapeHtml(myName), avatar: myAvatar },
-            joinedAt: serverTimestamp()
-        });
-    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
-};
-
-// =========================================================
-//  PLAY WITH AI
-// =========================================================
-window.playWithAI = async (roomId) => {
-    try {
-        const snap = await getDoc(doc(db, "rooms", roomId));
-        if (!snap.exists()) return;
-        const data = snap.data();
-        if (data.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
-        const gameType = data.gameType || "fanorontelo";
-        await updateDoc(doc(db, "rooms", roomId), {
-            opponent: {
-                id: 'AI_BOT',
-                name: 'NOLIMITE AI',
-                avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI',
-                isAI: true
-            },
-            status: "playing",
-            board: initBoard(gameType),
-            turn: getUserId(),
-            startedAt: serverTimestamp()
-        });
-    } catch(e) { showToast("Tsy afaka nampiditra AI: " + e.message, "error"); }
 };
 
 // =========================================================
@@ -821,7 +652,6 @@ window.enterGame = async (id) => {
 
         render(game);
 
-        // --- Timer ---
         if (turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
 
         if (game.status === 'playing') {
@@ -844,31 +674,36 @@ window.enterGame = async (id) => {
                                 ? game.opponent?.id
                                 : game.creator?.id;
                             if (nextTurn) {
-                                await updateDoc(roomRef, { turn: nextTurn }).catch(() => {});
+                                await updateDoc(roomRef, {
+                                    turn:      nextTurn,
+                                    updatedAt: serverTimestamp(),
+                                    version:   (game.version || 0) + 1
+                                }).catch(() => {});
                             }
                         }
                     }
                 }, 1000);
             }
 
-            // AI move
             if (game.turn === 'AI_BOT' && !isAiThinking) {
                 aiMove(game);
             }
 
-            // Vérification winner
             const winner = checkWinnerFanorona(
                 game.board, game.creator?.id, game.opponent?.id, game.gameType
             );
             if (winner && !gameEnded) {
                 clearInterval(turnTimerInterval); turnTimerInterval = null;
                 await updateDoc(roomRef, {
-                    status: 'finished', winner, finishedAt: serverTimestamp()
+                    status:     'finished',
+                    winner,
+                    finishedAt: serverTimestamp(),
+                    updatedAt:  serverTimestamp(),
+                    version:    (game.version || 0) + 1
                 }).catch(() => {});
             }
         }
 
-        // Game over
         if (game.status === 'finished' && game.winner && !gameEnded) {
             gameEnded = true;
             if (turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
@@ -878,7 +713,6 @@ window.enterGame = async (id) => {
             const winnerName = winnerId === game.creator?.id ? game.creator?.name : game.opponent?.name;
             const loserName  = loserId  === game.creator?.id ? game.creator?.name : game.opponent?.name;
 
-            // Update leaderboard (seulement humains)
             if (winnerId !== 'AI_BOT' && loserId && loserId !== 'AI_BOT') {
                 await updateLeaderboard(winnerId, winnerName, loserId, loserName).catch(console.warn);
             }
@@ -887,7 +721,6 @@ window.enterGame = async (id) => {
             setTimeout(() => {
                 showToast(msg, 'success', 5000);
                 if (confirm(`🏆 ${winnerName} no nandresy!\nHifandimby indray?`)) {
-                    // Rematch — ovay turn
                     leaveGame();
                 } else {
                     leaveGame();
@@ -928,7 +761,6 @@ function render(game) {
             div.setAttribute("aria-label", "Toerana malalaka");
         }
 
-        // Utiliser pointerdown pour éviter double-trigger tactile/souris
         div.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             handleMove(cell, game);
@@ -942,7 +774,6 @@ function render(game) {
 
     grid.appendChild(fragment);
 
-    // Turn indicator
     const turnEl = document.getElementById("turn-indicator");
     if (turnEl) {
         const isMyTurn = game.turn === getUserId();
@@ -959,7 +790,6 @@ function render(game) {
         }
     }
 
-    // Score
     const countBlack = game.board.filter(c => c.value === 1).length;
     const countWhite = game.board.filter(c => c.value === 2).length;
     const cbEl = document.getElementById("count-black");
@@ -979,7 +809,7 @@ async function handleMove(cell, game) {
     if (!uid || game.turn !== uid) return;
 
     const myVal = game.creator?.id === uid ? 1 : 2;
-    let b = game.board.map(c => ({ ...c })); // copie profonde
+    let b = game.board.map(c => ({ ...c }));
 
     if (!selectedCell) {
         if (cell.value === myVal) {
@@ -988,7 +818,6 @@ async function handleMove(cell, game) {
         }
     } else {
         if (cell.id === selectedCell.id) {
-            // Déselectionner
             selectedCell = null;
             render(game);
             return;
@@ -997,8 +826,6 @@ async function handleMove(cell, game) {
         if (cell.value === 0 && isValidMove(selectedCell, cell, game.gameType)) {
             const captures = getCaptures(b, selectedCell, cell, myVal, game.gameType);
             const fromId   = selectedCell.id;
-
-            // Notation du dernier mouvement
             const notation = cellToNotation(selectedCell) + '-' + cellToNotation(cell);
 
             b = b.map(c => {
@@ -1018,30 +845,6 @@ async function handleMove(cell, game) {
             selectedCell = null;
             render(game);
         }
-    }
-}
-
-// =========================================================
-//  FINALIZE TURN
-// =========================================================
-async function finalizeTurn(b, game, notation) {
-    if (!currentRoomId) return;
-    if (!game.opponent?.id) return;
-
-    const winner   = checkWinnerFanorona(b, game.creator?.id, game.opponent?.id, game.gameType);
-    const nextTurn = game.turn === game.creator?.id ? game.opponent?.id : game.creator?.id;
-
-    try {
-        await updateDoc(doc(db, "rooms", currentRoomId), {
-            board:    b,
-            turn:     winner ? "end" : nextTurn,
-            winner:   winner || null,
-            lastMove: notation || null,
-            updatedAt: serverTimestamp()
-        });
-    } catch(e) {
-        showToast("Hadisoana @ fandefasana paika", "error");
-        console.error("finalizeTurn error:", e);
     }
 }
 
@@ -1080,7 +883,7 @@ function initChat(roomId) {
     const q = query(
         collection(db, "rooms", roomId, "chat"),
         orderBy("timestamp", "asc"),
-        limit(100)
+        limit(50)
     );
     unsubscribeChat = onSnapshot(q, (snap) => {
         if (!chatMessages) return;
@@ -1102,7 +905,6 @@ function initChat(roomId) {
         const text = (chatInput.value || '').trim();
         if (!text || text.length > 200) return;
 
-        // Rate limit : 5 messages / 10s
         const now = Date.now();
         if (now > chatRateLimit.resetAt) {
             chatRateLimit.count = 0;
@@ -1126,7 +928,6 @@ function initChat(roomId) {
         } catch(e) { showToast("Tsy afaka nandefa hafatra", "error"); }
     }
 
-    // Enlever les anciens handlers
     const newSend = chatSend.cloneNode(true);
     chatSend.parentNode.replaceChild(newSend, chatSend);
     newSend.addEventListener('click', sendMessage);
@@ -1135,7 +936,6 @@ function initChat(roomId) {
     chatInput.parentNode.replaceChild(newInput, chatInput);
     newInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-    // Quick chat buttons
     document.querySelectorAll('.qc-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const msg = btn.dataset.msg;
@@ -1223,14 +1023,16 @@ window.closeEditModal = () => {
     document.getElementById("modal-edit-profile")?.classList.add("hidden");
 };
 
-// Preview avatar
+// =========================================================
+//  DOM CONTENT LOADED
+// =========================================================
 document.addEventListener('DOMContentLoaded', () => {
     const avatarInput = document.getElementById("edit-avatar");
     const preview = document.getElementById("avatar-preview");
     if (avatarInput && preview) {
         avatarInput.addEventListener('input', () => {
             const url = avatarInput.value.trim();
-            if (url.startsWith('http')) {
+            if (url.startsWith('https://')) {
                 preview.src = url;
                 preview.style.display = 'block';
             } else {
@@ -1239,7 +1041,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== BTN GOOGLE =====
     const btnGoogle = document.getElementById("btn-google");
     if (btnGoogle) {
         btnGoogle.addEventListener('click', async () => {
@@ -1255,7 +1056,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== BTN GUEST =====
     const btnGuest = document.getElementById("btn-guest");
     if (btnGuest) {
         btnGuest.addEventListener('click', async () => {
@@ -1276,7 +1076,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 await setDoc(doc(db, "users", guestUid), {
                     uid: guestUid, name: guestName, avatar,
                     status: "online", isGuest: true,
-                    lastSeen: serverTimestamp(), createdAt: serverTimestamp()
+                    lastSeen: serverTimestamp(),
+                    createdAt: serverTimestamp()
                 }, { merge: true });
                 setupGuestUI({ uid: guestUid, name: guestName, avatar });
             } catch(e) {
@@ -1286,7 +1087,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== BTN CREATE ROOM =====
     const btnCreate = document.getElementById("btn-create-room");
     if (btnCreate) {
         btnCreate.addEventListener('click', () => {
@@ -1295,7 +1095,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== ROOM TYPE CHANGE =====
     const roomType = document.getElementById("room-type");
     const pwGroup  = document.getElementById("password-group");
     if (roomType && pwGroup) {
@@ -1304,7 +1103,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== QUICK PLAY =====
     const btnQuick = document.getElementById("btn-quick-play");
     if (btnQuick) {
         btnQuick.addEventListener('click', async () => {
@@ -1331,9 +1129,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             name: escapeHtml(document.getElementById("user-name")?.textContent||""),
                             avatar: document.getElementById("user-avatar")?.src||""
                         },
-                        status: "waiting", type: "public",
-                        gameType: "fanorontelo",
-                        createdAt: serverTimestamp()
+                        status:    "waiting",
+                        type:      "public",
+                        gameType:  "fanorontelo",
+                        createdAt: serverTimestamp(),
+                        version:   0
                     });
                     autoDeleteRoom(autoId);
                     viewRoom(autoId);
@@ -1343,7 +1143,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== CONFIRM CREATE ROOM =====
     const btnConfirm = document.getElementById("btn-confirm-create");
     if (btnConfirm) {
         btnConfirm.addEventListener('click', async () => {
@@ -1357,6 +1156,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pass     = document.getElementById("room-password")?.value || '';
                 const gameType = document.getElementById("game-type")?.value || "fanorontelo";
 
+                if (type === "private" && (!pass || pass.length < 1 || pass.length > 20)) {
+                    showToast("Password 1-20 litera takiana raha private", "error");
+                    btnConfirm.disabled = false;
+                    return;
+                }
+
                 const existSnap = await getDoc(doc(db, "rooms", name));
                 if (existSnap.exists()) { showToast("Efa misy kianja mitovy anarana", "error"); btnConfirm.disabled = false; return; }
 
@@ -1366,13 +1171,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         name: escapeHtml(document.getElementById("user-name")?.textContent||""),
                         avatar: document.getElementById("user-avatar")?.src||""
                     },
-                    status: "waiting", type,
+                    status:    "waiting",
+                    type,
                     gameType,
-                    password: type === "private" ? pass : "",
-                    createdAt: serverTimestamp()
+                    password:  type === "private" ? pass : "",
+                    createdAt: serverTimestamp(),
+                    version:   0
                 });
 
-                // Reset form
                 if (document.getElementById("room-uid-input"))   document.getElementById("room-uid-input").value   = '';
                 if (document.getElementById("room-password"))     document.getElementById("room-password").value   = '';
                 if (document.getElementById("room-type"))         document.getElementById("room-type").value        = 'public';
@@ -1386,76 +1192,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== SAVE PROFILE =====
     const btnSave = document.getElementById("btn-save-profile");
-if (btnSave) {
-    btnSave.addEventListener('click', async () => {
-        const uid = getUserId();
-        if (!uid) {
-            showToast("Tsy tafiditra ianao", "error");
-            return;
-        }
-        btnSave.disabled = true;
-        try {
-            let newName = (document.getElementById("edit-name")?.value || '').trim();
-            const newAvatar = (document.getElementById("edit-avatar")?.value || '').trim();
-            
-            if (!newName || newName.length > 8) {
-                showToast("Anarana 1 hatramin'ny 8 litera", "error");
-                return;
-            }
-            if (newAvatar && !newAvatar.startsWith('http')) {
-                showToast("URL avatar tsy marina", "error");
-                return;
-            }
-            
-            const finalAvatar = newAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
-            
-            // 1. Update users collection
-            await setDoc(doc(db, "users", uid), {
-                uid: uid,
-                name: newName, 
-                avatar: finalAvatar,
-                status: "online",
-                lastSeen: serverTimestamp()
-            }, { merge: true });
-            
-            // 2. Update anarana ao amin'ny room raha efa anaty lalao
-            if (currentRoomId) {
-                const roomRef = doc(db, "rooms", currentRoomId);
-                const roomSnap = await getDoc(roomRef);
-                if (roomSnap.exists()) {
-                    const roomData = roomSnap.data();
-                    if (roomData.creator?.id === uid) {
-                        await updateDoc(roomRef, {
-                            "creator.name": newName,
-                            "creator.avatar": finalAvatar
-                        });
-                    } else if (roomData.opponent?.id === uid) {
-                        await updateDoc(roomRef, {
-                            "opponent.name": newName,
-                            "opponent.avatar": finalAvatar
-                        });
+    if (btnSave) {
+        btnSave.addEventListener('click', async () => {
+            const uid = getUserId();
+            if (!uid) { showToast("Tsy tafiditra ianao", "error"); return; }
+            btnSave.disabled = true;
+            try {
+                let newName   = (document.getElementById("edit-name")?.value || '').trim();
+                const newAvatar = (document.getElementById("edit-avatar")?.value || '').trim();
+
+                if (!newName || newName.length > 20) {
+                    showToast("Anarana 1 hatramin'ny 20 litera", "error");
+                    return;
+                }
+                if (newAvatar && !newAvatar.startsWith('https://')) {
+                    showToast("URL avatar tsy marina (tsy maintsy https://)", "error");
+                    return;
+                }
+                if (newAvatar && newAvatar.length > 500) {
+                    showToast("URL avatar lava be (max 500 litera)", "error");
+                    return;
+                }
+
+                const finalAvatar = newAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
+
+                await setDoc(doc(db, "users", uid), {
+                    uid,
+                    name:     newName,
+                    avatar:   finalAvatar,
+                    status:   "online",
+                    lastSeen: serverTimestamp()
+                }, { merge: true });
+
+                if (currentRoomId) {
+                    const roomRef  = doc(db, "rooms", currentRoomId);
+                    const roomSnap = await getDoc(roomRef);
+                    if (roomSnap.exists()) {
+                        const roomData = roomSnap.data();
+                        const currentVersion = roomData.version || 0;
+                        if (roomData.creator?.id === uid) {
+                            await updateDoc(roomRef, {
+                                "creator.name":   newName,
+                                "creator.avatar": finalAvatar,
+                                updatedAt:        serverTimestamp(),
+                                version:          currentVersion + 1
+                            });
+                        } else if (roomData.opponent?.id === uid) {
+                            await updateDoc(roomRef, {
+                                "opponent.name":   newName,
+                                "opponent.avatar": finalAvatar,
+                                updatedAt:         serverTimestamp(),
+                                version:           currentVersion + 1
+                            });
+                        }
                     }
                 }
+
+                const nameEl   = document.getElementById("user-name");
+                const avatarEl = document.getElementById("user-avatar");
+                if (nameEl)   nameEl.textContent = newName;
+                if (avatarEl) avatarEl.src = finalAvatar;
+
+                closeEditModal();
+                showToast("Voatahiry ny mombamomba! ✅", "success");
+            } catch(e) {
+                console.error("Erreur save profile:", e);
+                showToast("Tsy afaka nahitsy: " + e.code, "error");
             }
-            
-            // 3. Update UI
-            const nameEl = document.getElementById("user-name");
-            const avatarEl = document.getElementById("user-avatar");
-            if (nameEl) nameEl.textContent = newName;
-            if (avatarEl) avatarEl.src = finalAvatar;
-            
-            closeEditModal();
-            showToast("Voatahiry ny mombamomba! ✅", "success");
-        } catch(e) { 
-            console.error("Erreur save profile:", e); 
-            showToast("Tsy afaka nahitsy: " + e.code, "error"); 
-        }
-        finally { btnSave.disabled = false; }
-    });
-}
-    // ===== LOGOUT =====
+            finally { btnSave.disabled = false; }
+        });
+    }
+
     const btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
@@ -1472,14 +1280,12 @@ if (btnSave) {
         });
     }
 
-    // ===== GAME SCREEN EXIT BUTTON (event delegation) =====
     document.addEventListener('click', (e) => {
         if (e.target.closest('[data-action="leave-game"]')) {
             if (confirm("Hiala amin'ny lalao ve ianao?")) leaveGame();
         }
     });
 
-    // ===== BEFORE UNLOAD =====
     window.addEventListener('beforeunload', () => {
         const uid = getUserId();
         if (uid) {
@@ -1490,18 +1296,24 @@ if (btnSave) {
     setupSearch();
     loadLeaderboard();
 });
-// ═══════════════════════════════════════════════════════════════
-//  SCRIPT.JS — Patch mba hifanaraka amin'ny Rules v4.0
-//  Ovay ireto function ireto ao amin'ny script.js taloha
-// ═══════════════════════════════════════════════════════════════
 
-// ── 1. finalizeTurn : manampy version increment (req #32) ──
+// =========================================================
+// =========================================================
+//  PATCH v4.0 — Rules-compatible functions
+//  Ovaina ireto fa ny teo ambony tsy mahasolo azy:
+//  finalizeTurn, startGame, playWithAI, joinRoom,
+//  aiMove, acceptInvite, leaveGameAbandoned
+// =========================================================
+// =========================================================
+
+// ── finalizeTurn v4.0 ─────────────────────────────────────
+// Manampy version increment + updatedAt (req #32 #15)
 async function finalizeTurn(b, game, notation) {
     if (!currentRoomId) return;
     if (!game.opponent?.id) return;
 
-    const winner   = checkWinnerFanorona(b, game.creator?.id, game.opponent?.id, game.gameType);
-    const nextTurn = game.turn === game.creator?.id ? game.opponent?.id : game.creator?.id;
+    const winner         = checkWinnerFanorona(b, game.creator?.id, game.opponent?.id, game.gameType);
+    const nextTurn       = game.turn === game.creator?.id ? game.opponent?.id : game.creator?.id;
     const currentVersion = game.version || 0;
 
     try {
@@ -1511,7 +1323,7 @@ async function finalizeTurn(b, game, notation) {
             winner:    winner || null,
             lastMove:  notation || null,
             updatedAt: serverTimestamp(),
-            version:   currentVersion + 1   // ← req #32
+            version:   currentVersion + 1
         });
     } catch(e) {
         showToast("Hadisoana @ fandefasana paika", "error");
@@ -1519,7 +1331,7 @@ async function finalizeTurn(b, game, notation) {
     }
 }
 
-// ── 2. startGame : manampy version (req #32) ──
+// ── startGame v4.0 ────────────────────────────────────────
 window.startGame = async (roomId) => {
     const uid = getUserId();
     if (!uid) return;
@@ -1529,7 +1341,7 @@ window.startGame = async (roomId) => {
         const data = snap.data();
         if (data.status === 'playing') return;
         if (!data.opponent?.id) { showToast("Miandry mpifanandrina aloha", "info"); return; }
-        const gameType = data.gameType || "fanorontelo";
+        const gameType       = data.gameType || "fanorontelo";
         const currentVersion = data.version || 0;
         await updateDoc(doc(db, "rooms", roomId), {
             status:    "playing",
@@ -1537,37 +1349,38 @@ window.startGame = async (roomId) => {
             turn:      uid,
             startedAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            version:   currentVersion + 1   // ← req #32
+            version:   currentVersion + 1
         });
     } catch(e) { showToast("Tsy afaka nanomboka: " + e.message, "error"); }
 };
 
-// ── 3. playWithAI : manampy version (req #32) ──
+// ── playWithAI v4.0 ───────────────────────────────────────
 window.playWithAI = async (roomId) => {
     try {
         const snap = await getDoc(doc(db, "rooms", roomId));
         if (!snap.exists()) return;
         const data = snap.data();
         if (data.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
-        const gameType = data.gameType || "fanorontelo";
+        const gameType       = data.gameType || "fanorontelo";
         const currentVersion = data.version || 0;
         await updateDoc(doc(db, "rooms", roomId), {
             opponent: {
-                id: 'AI_BOT', name: 'NOLIMITE AI',
+                id:     'AI_BOT',
+                name:   'NOLIMITE AI',
                 avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI',
-                isAI: true
+                isAI:   true
             },
             status:    "playing",
             board:     initBoard(gameType),
             turn:      getUserId(),
             startedAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            version:   currentVersion + 1   // ← req #32
+            version:   currentVersion + 1
         });
     } catch(e) { showToast("Tsy afaka nampiditra AI: " + e.message, "error"); }
 };
 
-// ── 4. joinRoom : manampy updatedAt + version (req #32 #15) ──
+// ── joinRoom v4.0 ─────────────────────────────────────────
 window.joinRoom = async (id) => {
     const uid = getUserId();
     if (!uid) { showToast("Tsy tafiditra ianao", "error"); return; }
@@ -1575,22 +1388,22 @@ window.joinRoom = async (id) => {
         const snap = await getDoc(doc(db, "rooms", id));
         if (!snap.exists()) return;
         const r = snap.data();
-        if (r.opponent?.id)    { showToast("Efa feno ity kianja ity", "error"); return; }
+        if (r.opponent?.id)         { showToast("Efa feno ity kianja ity", "error"); return; }
         if (r.status !== "waiting") { showToast("Efa nanomboka ity lalao ity", "error"); return; }
         if (r.creator?.id === uid)  return;
-        const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
-        const myAvatar = document.getElementById("user-avatar")?.src || '';
+        const myName         = document.getElementById("user-name")?.textContent || "Mpilalao";
+        const myAvatar       = document.getElementById("user-avatar")?.src || '';
         const currentVersion = r.version || 0;
         await updateDoc(doc(db, "rooms", id), {
             opponent:  { id: uid, name: escapeHtml(myName), avatar: myAvatar },
             joinedAt:  serverTimestamp(),
             updatedAt: serverTimestamp(),
-            version:   currentVersion + 1   // ← req #32
+            version:   currentVersion + 1
         });
     } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
 };
 
-// ── 5. aiMove : manampy version + updatedAt (req #32 #15) ──
+// ── aiMove v4.0 ───────────────────────────────────────────
 async function aiMove(game) {
     if (!game || game.turn !== 'AI_BOT' || game.status !== 'playing') return;
     if (!currentRoomId) return;
@@ -1608,8 +1421,9 @@ async function aiMove(game) {
         const emptyCells = board.filter(c => c.value === 0);
         if (aiStones.length === 0 || emptyCells.length === 0) { isAiThinking = false; return; }
 
-        let bestMove = null;
+        let bestMove    = null;
         let maxCaptures = -1;
+
         for (const stone of aiStones) {
             for (const empty of emptyCells) {
                 if (!isValidMove(stone, empty, game.gameType)) continue;
@@ -1620,6 +1434,7 @@ async function aiMove(game) {
                 }
             }
         }
+
         if (!bestMove || maxCaptures === 0) {
             const moves = [];
             for (const stone of aiStones) {
@@ -1631,12 +1446,13 @@ async function aiMove(game) {
             if (moves.length > 0)
                 bestMove = moves[Math.floor(Math.random() * moves.length)];
         }
+
         if (!bestMove) { isAiThinking = false; return; }
 
-        let newBoard = board.map(cell => {
-            if (cell.id === bestMove.from.id)          return { ...cell, value: 0 };
-            if (cell.id === bestMove.to.id)            return { ...cell, value: 2 };
-            if (bestMove.captures.includes(cell.id))   return { ...cell, value: 0 };
+        const newBoard = board.map(cell => {
+            if (cell.id === bestMove.from.id)        return { ...cell, value: 0 };
+            if (cell.id === bestMove.to.id)          return { ...cell, value: 2 };
+            if (bestMove.captures.includes(cell.id)) return { ...cell, value: 0 };
             return cell;
         });
 
@@ -1646,16 +1462,16 @@ async function aiMove(game) {
             turn:      game.creator.id,
             lastMove:  cellToNotation(bestMove.from) + '-' + cellToNotation(bestMove.to),
             updatedAt: serverTimestamp(),
-            version:   currentVersion + 1   // ← req #32
+            version:   currentVersion + 1
         });
-    } catch (err) {
+    } catch(err) {
         console.error("AI error:", err);
     } finally {
         isAiThinking = false;
     }
 }
 
-// ── 6. acceptInvite : manampy version=1 @ room vaovao ──
+// ── acceptInvite v4.0 ─────────────────────────────────────
 window.acceptInvite = async (inviteId, senderUid, senderName) => {
     const uid = getUserId();
     if (!uid) return;
@@ -1670,37 +1486,27 @@ window.acceptInvite = async (inviteId, senderUid, senderName) => {
             status:    "playing",
             gameType:  "fanorontelo",
             type:      "private",
+            password:  "",
             board:     initBoard("fanorontelo"),
             turn:      senderUid,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            version:   1                    // ← req #32
+            version:   1
         });
         await updateDoc(doc(db, "invites", inviteId), {
             status:      "accepted",
-            respondedAt: serverTimestamp() // ← req respondedAt==request.time
+            respondedAt: serverTimestamp()
         });
         enterGame(roomId);
     } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
 };
 
-// ── 7. Btn confirm-create : manampy version=0 @ room ──
-// (ao amin'ny DOMContentLoaded, ovay ilay btnConfirm click handler)
-// Avereno fotsiny @ create : version: 0 ← req #32
-
-// ── 8. Timer timeout : manampy version increment ──
-// Ao amin'ny turnTimerInterval, ovay ilay updateDoc :
-//   await updateDoc(roomRef, {
-//     turn: nextTurn,
-//     updatedAt: serverTimestamp(),
-//     version: (game.version || 0) + 1   // ← req #32
-//   }).catch(() => {});
-
-// ── 9. leaveGame : status='abandoned' fa tsy delete (req #62) ──
-// OPTIONAL: raha tianao tehirizo stats, ovay leaveGame :
+// ── leaveGameAbandoned v4.0 ───────────────────────────────
+// Req #62 : status='abandoned' fa tsy delete raha playing
+// Ampiasao ity fa tsy leaveGame() raha tiana tehirizo stats
 window.leaveGameAbandoned = async () => {
     unsubscribeAll();
-    const rid = currentRoomId;
+    const rid       = currentRoomId;
     currentRoomId   = null;
     selectedCell    = null;
     lastMovedCellId = null;
@@ -1710,7 +1516,6 @@ window.leaveGameAbandoned = async () => {
         try {
             const snap = await getDoc(doc(db, "rooms", rid));
             if (snap.exists() && snap.data().status === 'playing') {
-                // Mark abandoned fa tsy delete — tehirizo stats (req #62)
                 await updateDoc(doc(db, "rooms", rid), {
                     status:      'abandoned',
                     abandonedBy: getUserId(),
