@@ -1490,3 +1490,237 @@ if (btnSave) {
     setupSearch();
     loadLeaderboard();
 });
+// ═══════════════════════════════════════════════════════════════
+//  SCRIPT.JS — Patch mba hifanaraka amin'ny Rules v4.0
+//  Ovay ireto function ireto ao amin'ny script.js taloha
+// ═══════════════════════════════════════════════════════════════
+
+// ── 1. finalizeTurn : manampy version increment (req #32) ──
+async function finalizeTurn(b, game, notation) {
+    if (!currentRoomId) return;
+    if (!game.opponent?.id) return;
+
+    const winner   = checkWinnerFanorona(b, game.creator?.id, game.opponent?.id, game.gameType);
+    const nextTurn = game.turn === game.creator?.id ? game.opponent?.id : game.creator?.id;
+    const currentVersion = game.version || 0;
+
+    try {
+        await updateDoc(doc(db, "rooms", currentRoomId), {
+            board:     b,
+            turn:      winner ? "end" : nextTurn,
+            winner:    winner || null,
+            lastMove:  notation || null,
+            updatedAt: serverTimestamp(),
+            version:   currentVersion + 1   // ← req #32
+        });
+    } catch(e) {
+        showToast("Hadisoana @ fandefasana paika", "error");
+        console.error("finalizeTurn error:", e);
+    }
+}
+
+// ── 2. startGame : manampy version (req #32) ──
+window.startGame = async (roomId) => {
+    const uid = getUserId();
+    if (!uid) return;
+    try {
+        const snap = await getDoc(doc(db, "rooms", roomId));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.status === 'playing') return;
+        if (!data.opponent?.id) { showToast("Miandry mpifanandrina aloha", "info"); return; }
+        const gameType = data.gameType || "fanorontelo";
+        const currentVersion = data.version || 0;
+        await updateDoc(doc(db, "rooms", roomId), {
+            status:    "playing",
+            board:     initBoard(gameType),
+            turn:      uid,
+            startedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            version:   currentVersion + 1   // ← req #32
+        });
+    } catch(e) { showToast("Tsy afaka nanomboka: " + e.message, "error"); }
+};
+
+// ── 3. playWithAI : manampy version (req #32) ──
+window.playWithAI = async (roomId) => {
+    try {
+        const snap = await getDoc(doc(db, "rooms", roomId));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.opponent?.id) { showToast("Efa feno ity kianja ity", "error"); return; }
+        const gameType = data.gameType || "fanorontelo";
+        const currentVersion = data.version || 0;
+        await updateDoc(doc(db, "rooms", roomId), {
+            opponent: {
+                id: 'AI_BOT', name: 'NOLIMITE AI',
+                avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=NoLimiteAI',
+                isAI: true
+            },
+            status:    "playing",
+            board:     initBoard(gameType),
+            turn:      getUserId(),
+            startedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            version:   currentVersion + 1   // ← req #32
+        });
+    } catch(e) { showToast("Tsy afaka nampiditra AI: " + e.message, "error"); }
+};
+
+// ── 4. joinRoom : manampy updatedAt + version (req #32 #15) ──
+window.joinRoom = async (id) => {
+    const uid = getUserId();
+    if (!uid) { showToast("Tsy tafiditra ianao", "error"); return; }
+    try {
+        const snap = await getDoc(doc(db, "rooms", id));
+        if (!snap.exists()) return;
+        const r = snap.data();
+        if (r.opponent?.id)    { showToast("Efa feno ity kianja ity", "error"); return; }
+        if (r.status !== "waiting") { showToast("Efa nanomboka ity lalao ity", "error"); return; }
+        if (r.creator?.id === uid)  return;
+        const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
+        const myAvatar = document.getElementById("user-avatar")?.src || '';
+        const currentVersion = r.version || 0;
+        await updateDoc(doc(db, "rooms", id), {
+            opponent:  { id: uid, name: escapeHtml(myName), avatar: myAvatar },
+            joinedAt:  serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            version:   currentVersion + 1   // ← req #32
+        });
+    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
+};
+
+// ── 5. aiMove : manampy version + updatedAt (req #32 #15) ──
+async function aiMove(game) {
+    if (!game || game.turn !== 'AI_BOT' || game.status !== 'playing') return;
+    if (!currentRoomId) return;
+    if (isAiThinking) return;
+    isAiThinking = true;
+
+    try {
+        await new Promise(r => setTimeout(r, 1000 + Math.random() * 600));
+        if (!currentRoomId) { isAiThinking = false; return; }
+
+        const board = game.board;
+        if (!Array.isArray(board)) { isAiThinking = false; return; }
+
+        const aiStones   = board.filter(c => c.value === 2);
+        const emptyCells = board.filter(c => c.value === 0);
+        if (aiStones.length === 0 || emptyCells.length === 0) { isAiThinking = false; return; }
+
+        let bestMove = null;
+        let maxCaptures = -1;
+        for (const stone of aiStones) {
+            for (const empty of emptyCells) {
+                if (!isValidMove(stone, empty, game.gameType)) continue;
+                const caps = getCaptures(board, stone, empty, 2, game.gameType);
+                if (caps.length > maxCaptures) {
+                    maxCaptures = caps.length;
+                    bestMove = { from: stone, to: empty, captures: caps };
+                }
+            }
+        }
+        if (!bestMove || maxCaptures === 0) {
+            const moves = [];
+            for (const stone of aiStones) {
+                for (const empty of emptyCells) {
+                    if (isValidMove(stone, empty, game.gameType))
+                        moves.push({ from: stone, to: empty, captures: [] });
+                }
+            }
+            if (moves.length > 0)
+                bestMove = moves[Math.floor(Math.random() * moves.length)];
+        }
+        if (!bestMove) { isAiThinking = false; return; }
+
+        let newBoard = board.map(cell => {
+            if (cell.id === bestMove.from.id)          return { ...cell, value: 0 };
+            if (cell.id === bestMove.to.id)            return { ...cell, value: 2 };
+            if (bestMove.captures.includes(cell.id))   return { ...cell, value: 0 };
+            return cell;
+        });
+
+        const currentVersion = game.version || 0;
+        await updateDoc(doc(db, "rooms", currentRoomId), {
+            board:     newBoard,
+            turn:      game.creator.id,
+            lastMove:  cellToNotation(bestMove.from) + '-' + cellToNotation(bestMove.to),
+            updatedAt: serverTimestamp(),
+            version:   currentVersion + 1   // ← req #32
+        });
+    } catch (err) {
+        console.error("AI error:", err);
+    } finally {
+        isAiThinking = false;
+    }
+}
+
+// ── 6. acceptInvite : manampy version=1 @ room vaovao ──
+window.acceptInvite = async (inviteId, senderUid, senderName) => {
+    const uid = getUserId();
+    if (!uid) return;
+    document.getElementById("invite-" + inviteId)?.remove();
+    const roomId   = "INV" + (Math.random().toString(36).substr(2,6)).toUpperCase();
+    const myName   = document.getElementById("user-name")?.textContent || "Mpilalao";
+    const myAvatar = document.getElementById("user-avatar")?.src || '';
+    try {
+        await setDoc(doc(db, "rooms", roomId), {
+            creator:   { id: senderUid, name: escapeHtml(senderName), avatar: "" },
+            opponent:  { id: uid, name: escapeHtml(myName), avatar: myAvatar },
+            status:    "playing",
+            gameType:  "fanorontelo",
+            type:      "private",
+            board:     initBoard("fanorontelo"),
+            turn:      senderUid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            version:   1                    // ← req #32
+        });
+        await updateDoc(doc(db, "invites", inviteId), {
+            status:      "accepted",
+            respondedAt: serverTimestamp() // ← req respondedAt==request.time
+        });
+        enterGame(roomId);
+    } catch(e) { showToast("Tsy afaka niditra: " + e.message, "error"); }
+};
+
+// ── 7. Btn confirm-create : manampy version=0 @ room ──
+// (ao amin'ny DOMContentLoaded, ovay ilay btnConfirm click handler)
+// Avereno fotsiny @ create : version: 0 ← req #32
+
+// ── 8. Timer timeout : manampy version increment ──
+// Ao amin'ny turnTimerInterval, ovay ilay updateDoc :
+//   await updateDoc(roomRef, {
+//     turn: nextTurn,
+//     updatedAt: serverTimestamp(),
+//     version: (game.version || 0) + 1   // ← req #32
+//   }).catch(() => {});
+
+// ── 9. leaveGame : status='abandoned' fa tsy delete (req #62) ──
+// OPTIONAL: raha tianao tehirizo stats, ovay leaveGame :
+window.leaveGameAbandoned = async () => {
+    unsubscribeAll();
+    const rid = currentRoomId;
+    currentRoomId   = null;
+    selectedCell    = null;
+    lastMovedCellId = null;
+    isAiThinking    = false;
+    showScreen('lobby-screen');
+    if (rid) {
+        try {
+            const snap = await getDoc(doc(db, "rooms", rid));
+            if (snap.exists() && snap.data().status === 'playing') {
+                // Mark abandoned fa tsy delete — tehirizo stats (req #62)
+                await updateDoc(doc(db, "rooms", rid), {
+                    status:      'abandoned',
+                    abandonedBy: getUserId(),
+                    finishedAt:  serverTimestamp(),
+                    updatedAt:   serverTimestamp(),
+                    version:     (snap.data().version || 0) + 1
+                });
+            } else {
+                await deleteDoc(doc(db, "rooms", rid));
+            }
+        } catch(e) { /* ignoré */ }
+    }
+};
