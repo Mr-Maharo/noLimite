@@ -1,4 +1,8 @@
-
+// =========================================================
+//  NOLIMITE FANORONA — script.js  v4.0
+//  Voa-katsaka, voa-hasina, manara-penitra
+//  Rules v4.0 compatible : version field, updatedAt==request.time
+// =========================================================
 
 // 1. IMPORTS REHETRA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
@@ -243,86 +247,132 @@ function cellToNotation(cell) {
 }
 
 // =========================================================
-//  AUTH STATE
+//  AUTH STATE  v4.0 — Rules-compatible + mantanjaka
 // =========================================================
+
+// Sanitize anarana: esory ny char dangerous, tapaho @ 20
+function sanitizeName(raw) {
+    if (!raw || typeof raw !== 'string') return 'Mpilalao';
+    return raw
+        .replace(/[<>&"']/g, '')   // esory char dangerous (rules isValidName)
+        .trim()
+        .substring(0, 20)          // max 20 litera
+        || 'Mpilalao';
+}
+
+// Avatar avy amin'ny Google mety http:// — ovay ho https:// na fallback
+function sanitizeAvatar(url, uid) {
+    const fallback = `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
+    if (!url || typeof url !== 'string') return fallback;
+    // Google Photos: soloina ho https raha http
+    if (url.startsWith('http://')) url = url.replace('http://', 'https://');
+    // Hamarino https + max 500
+    if (!url.startsWith('https://') || url.length > 500) return fallback;
+    return url;
+}
+
 onAuthStateChanged(auth, async (user) => {
-    try {
-        if (!user) {
-            const guestUid = localStorage.getItem("nolimite_guest_uid");
+    if (user) {
+        myCurrentUid = user.uid;
 
-            if (!guestUid) {
-                showScreen("login-screen");
+        // ── 1. Jereo raha banned ──────────────────────────────
+        try {
+            const banSnap = await getDoc(doc(db, "users", user.uid));
+            if (banSnap.exists() && banSnap.data().banned === true) {
+                showToast("Voarara ny kaontinao. Mifandraisa amin'ny admin.", "error", 8000);
+                await auth.signOut().catch(() => {});
+                showScreen('login-screen');
+                return;
             }
+        } catch(e) { /* tsy misy user doc @ DB — normal ho an'ny vaovao */ }
 
+        // ── 2. Tombanana ny anarana sy avatar marina ──────────
+        const userRef  = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef).catch(() => null);
+        const isNew    = !userSnap || !userSnap.exists();
+
+        let finalName, finalAvatar;
+
+        if (!isNew) {
+            // User efa misy — ampiasao ny data tao @ Firestore (tsy override)
+            const d    = userSnap.data();
+            finalName   = d.name   || sanitizeName(user.displayName);
+            finalAvatar = d.avatar || sanitizeAvatar(user.photoURL, user.uid);
+        } else {
+            // Vaovao — avy amin'ny Google na default
+            finalName   = sanitizeName(user.displayName);
+            finalAvatar = sanitizeAvatar(user.photoURL, user.uid);
+        }
+
+        // ── 3. Soratana @ Firestore ───────────────────────────
+        try {
+            if (isNew) {
+                // CREATE : createdAt == request.time (req rules)
+                await setDoc(userRef, {
+                    uid:       user.uid,
+                    name:      finalName,
+                    avatar:    finalAvatar,
+                    status:    "online",
+                    lastSeen:  serverTimestamp(),
+                    createdAt: serverTimestamp(),   // ← CREATE takian'ny rules
+                    isGuest:   false
+                });
+            } else {
+                // UPDATE presence seulement — tsy ovaina createdAt na name
+                await updateDoc(userRef, {
+                    status:   "online",
+                    lastSeen: serverTimestamp()
+                });
+            }
+        } catch(e) {
+            // Raha fail (permission, network) dia averina @ login
+            console.error("onAuthStateChanged write error:", e);
+            showToast("Tsy afaka niditra: " + (e.code || e.message), "error", 5000);
+            showScreen('login-screen');
             return;
         }
 
-        myCurrentUid = user.uid;
+        // ── 4. Launch UI ──────────────────────────────────────
+        setupGuestUI({ uid: user.uid, name: finalName, avatar: finalAvatar });
 
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+    } else {
+        // ── Tsy tafiditra ─────────────────────────────────────
+        const guestUid  = localStorage.getItem("nolimite_guest_uid");
+        const guestName = localStorage.getItem("nolimite_guest_name");
 
-        const defaultName =
-            user.displayName?.trim() || "Mpilalao";
+        if (guestUid && guestName) {
+            // Guest efa niditra taloha — averina mivantana ny session
+            myCurrentUid = guestUid;
+            const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${guestUid}`;
 
-        const defaultAvatar =
-            user.photoURL ||
-            `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+            // Jereo raha banned izy
+            try {
+                const banSnap = await getDoc(doc(db, "users", guestUid));
+                if (banSnap.exists() && banSnap.data().banned === true) {
+                    localStorage.removeItem("nolimite_guest_uid");
+                    localStorage.removeItem("nolimite_guest_name");
+                    showToast("Voarara ny kaontinao.", "error", 8000);
+                    showScreen('login-screen');
+                    return;
+                }
+            } catch(e) { /* ignoré */ }
 
-        let profileData = {
-            uid: user.uid,
-            name: defaultName,
-            avatar: defaultAvatar,
-            status: "online",
-            lastSeen: serverTimestamp()
-        };
+            // Averina online
+            try {
+                await updateDoc(doc(db, "users", guestUid), {
+                    status:   "online",
+                    lastSeen: serverTimestamp()
+                });
+            } catch(e) { /* ignoré — mety tsy misy doc */ }
 
-        if (userSnap.exists()) {
-            const data = userSnap.data();
-
-            profileData = {
-                ...profileData,
-
-                name:
-                    data.name ??
-                    profileData.name,
-
-                avatar:
-                    data.avatar ??
-                    profileData.avatar
-            };
-
-            // createdAt tsy ovaina intsony raha efa misy
-            if (!data.createdAt) {
-                profileData.createdAt = serverTimestamp();
-            }
+            setupGuestUI({ uid: guestUid, name: guestName, avatar });
         } else {
-            // User vaovao
-            profileData.createdAt = serverTimestamp();
+            // Tena tsy tafiditra — asehoy login
+            showScreen('login-screen');
         }
-
-        await setDoc(userRef, profileData, {
-            merge: true
-        });
-
-        setupGuestUI({
-            uid: user.uid,
-            name: profileData.name,
-            avatar: profileData.avatar
-        });
-
-        console.log(
-            `[AUTH] User loaded: ${profileData.name}`
-        );
-
-    } catch (error) {
-        console.error(
-            "[AUTH ERROR]",
-            error.code || "",
-            error.message || error
-        );
     }
 });
+
 // =========================================================
 //  SETUP UI after login
 // =========================================================
