@@ -246,72 +246,30 @@ function cellToNotation(cell) {
 //  AUTH STATE
 // =========================================================
 onAuthStateChanged(auth, async (user) => {
-    // Mialoha ny zavatra rehetra: diovy ny state taloha
-    unsubscribeAll();
-    teardownPresence(myCurrentUid);
-    myCurrentUid = null;
-
     try {
-        // ===== CAS 1: TSY MISY USER - JEREO GUEST =====
         if (!user) {
             const guestUid = localStorage.getItem("nolimite_guest_uid");
-            const guestName = localStorage.getItem("nolimite_guest_name");
-            
-            if (guestUid && guestName) {
-                // Avereno ny guest session
-                myCurrentUid = guestUid;
-                const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${guestUid}`;
-                
-                // Update presence ho an'ny guest
-                await setDoc(doc(db, "users", guestUid), {
-                    uid: guestUid,
-                    name: guestName,
-                    avatar: avatar,
-                    status: "online",
-                    lastSeen: serverTimestamp(),
-                    isGuest: true
-                }, { merge: true }).catch(() => {}); // ignorena raha rules tsy mamela
-                
-                setupGuestUI({ uid: guestUid, name: guestName, avatar });
-                return;
+
+            if (!guestUid) {
+                showScreen("login-screen");
             }
-            
-            showScreen("login-screen");
+
             return;
         }
 
-        // ===== CAS 2: MISY USER FIREBASE =====
         myCurrentUid = user.uid;
+
         const userRef = doc(db, "users", user.uid);
-        
-        // Atao ao anaty try/catch manokana ny getDoc satria mety permission-denied
-        let userSnap = null;
-        try {
-            userSnap = await getDoc(userRef);
-        } catch (e) {
-            console.warn("[AUTH] getDoc failed, treating as new user:", e.code);
-            userSnap = { exists: () => false }; // fake snapshot
-        }
+        const userSnap = await getDoc(userRef);
 
-        // Sanitize ny data avy @ Google/Firebase Auth
-        const sanitizeName = (name) => {
-            if (!name || typeof name !== 'string') return "Mpilalao";
-            const cleaned = name.trim().replace(/[<>&"']/g, '');
-            return cleaned.slice(0, 20) || "Mpilalao";
-        };
+        const defaultName =
+            user.displayName?.trim() || "Mpilalao";
 
-        const sanitizeAvatar = (url) => {
-            if (!url || typeof url !== 'string') return '';
-            if (!url.startsWith('https://')) return '';
-            return url.slice(0, 500);
-        };
-
-        const defaultName = sanitizeName(user.displayName);
-        const defaultAvatar = sanitizeAvatar(user.photoURL) || 
+        const defaultAvatar =
+            user.photoURL ||
             `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
 
-        // Base profile - tsy misy undefined mihitsy
-        const baseProfile = {
+        let profileData = {
             uid: user.uid,
             name: defaultName,
             avatar: defaultAvatar,
@@ -319,66 +277,50 @@ onAuthStateChanged(auth, async (user) => {
             lastSeen: serverTimestamp()
         };
 
-        let finalProfile;
-
         if (userSnap.exists()) {
-            const data = userSnap.data() || {};
-            
-            finalProfile = {
-                ...baseProfile,
-                // Override amin'ny data efa ao DB raha misy sy valide
-                name: sanitizeName(data.name) || baseProfile.name,
-                avatar: sanitizeAvatar(data.avatar) || baseProfile.avatar,
-                // createdAt: tsy ovaina mihitsy raha efa misy - req #1
-                createdAt: data.createdAt || serverTimestamp(),
-                // Tazony ny champ hafa raha misy: wins, losses, isGuest, sns
-                ...(data.wins !== undefined && { wins: data.wins }),
-                ...(data.losses !== undefined && { losses: data.losses }),
-                ...(data.isGuest !== undefined && { isGuest: data.isGuest }),
-                ...(data.banned !== undefined && { banned: data.banned })
+            const data = userSnap.data();
+
+            profileData = {
+                ...profileData,
+
+                name:
+                    data.name ??
+                    profileData.name,
+
+                avatar:
+                    data.avatar ??
+                    profileData.avatar
             };
+
+            // createdAt tsy ovaina intsony raha efa misy
+            if (!data.createdAt) {
+                profileData.createdAt = serverTimestamp();
+            }
         } else {
-            // User vaovao 100%
-            finalProfile = {
-                ...baseProfile,
-                createdAt: serverTimestamp(),
-                wins: 0,
-                losses: 0,
-                isGuest: false
-            };
+            // User vaovao
+            profileData.createdAt = serverTimestamp();
         }
 
-        // SetDoc miaraka @ merge: true - tsy hamafa champ hafa
-        await setDoc(userRef, finalProfile, { merge: true });
-
-        // Raha banned ilay user, avoaka
-        if (finalProfile.banned === true) {
-            showToast("Voasakana ity kaonty ity", "error");
-            await auth.signOut();
-            return;
-        }
+        await setDoc(userRef, profileData, {
+            merge: true
+        });
 
         setupGuestUI({
             uid: user.uid,
-            name: finalProfile.name,
-            avatar: finalProfile.avatar
+            name: profileData.name,
+            avatar: profileData.avatar
         });
 
-        console.log(`[AUTH] User loaded: ${finalProfile.name}`);
+        console.log(
+            `[AUTH] User loaded: ${profileData.name}`
+        );
 
     } catch (error) {
-        console.error("[AUTH ERROR]", error);
-        
-        // Aseho ny error @ user raha permission-denied
-        if (error.code === 'permission-denied') {
-            showToast("Tsy manana alalana hiditra", "error");
-        } else if (error.code === 'unavailable') {
-            showToast("Tapaka ny tambazotra, andramo indray", "error");
-        } else {
-            showToast("Hadisoana: " + (error.message || 'tsy fantatra'), "error");
-        }
-        
-        showScreen("login-screen");
+        console.error(
+            "[AUTH ERROR]",
+            error.code || "",
+            error.message || error
+        );
     }
 });
 // =========================================================
