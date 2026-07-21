@@ -489,14 +489,7 @@ function applyMove(board, move, myVal) {
 // =========================================================
 // 11. AUTH STATE
 // =========================================================
-function sanitizeName(raw) {
-  if (!raw || typeof raw!== 'string') return 'Mpilalao';
-  return raw
-   .replace(/[<>&"']/g, '')
-   .trim()
-   .substring(0, 20)
-    || 'Mpilalao';
-}
+
 
 function sanitizeAvatar(url, uid) {
   const fallback = `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
