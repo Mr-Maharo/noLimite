@@ -239,13 +239,7 @@ function sanitizeName(raw) {
     || 'Mpilalao';
 }
 
-function sanitizeAvatar(url, uid) {
-  const fallback = `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`;
-  if (!url || typeof url!== 'string') return fallback;
-  if (url.startsWith('http://')) url = url.replace('http://', 'https://');
-  if (!url.startsWith('https://') || url.length > 500) return fallback;
-  return url;
-}
+
 
 function isValidRoomId(id) {
   return /^[A-Za-z0-9_-]{1,20}$/.test(id);
